@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Mic, AlertCircle, Sparkles, ChevronDown, Check, ArrowRight, Volume2, VolumeX } from 'lucide-react';
 import { Lead, LeadSource, LeadPurpose } from '../../types';
 import { parsePhoneInput, findDuplicatePhone } from '../../utils/phone';
-import { useTextToSpeech } from '../../utils/speech';
+import { useTextToSpeech, useVoiceRecognition } from '../../utils/speech';
 import { CustomSelect } from '../common/Select';
 import { DateTimePicker } from '../common/DateTimePicker';
 import { FaWhatsapp, FaInstagram, FaTiktok, FaYoutube, FaLinkedinIn } from 'react-icons/fa6';
@@ -75,10 +75,27 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [followUpPreset, setFollowUpPreset] = useState<'tomorrow' | '3days' | 'nextweek' | 'custom'>('tomorrow');
   const [customFollowUpDate, setCustomFollowUpDate] = useState('');
   const [noteText, setNoteText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
   const [dictationLang, setDictationLang] = useState<'en-US' | 'hi-IN'>('en-US');
   const [showFullForm, setShowFullForm] = useState(false);
   const { isSpeaking, speak, stop } = useTextToSpeech();
+
+  const {
+    isListening,
+    interimTranscript,
+    toggleListening,
+    stopListening,
+    isSupported: isVoiceSupported,
+  } = useVoiceRecognition({
+    lang: dictationLang,
+    onResult: (text, isInterim) => {
+      if (!isInterim && text.trim()) {
+        setNoteText(prev => (prev ? `${prev.trim()} ${text.trim()}` : text.trim()));
+      }
+    },
+    onError: (msg) => {
+      toast.error(msg);
+    },
+  });
 
   // Additional full form fields
   const [email, setEmail] = useState('');
@@ -94,8 +111,9 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       setTimeout(() => phoneInputRef.current?.focus(), 80);
     } else {
       setShowFullForm(false);
+      stopListening();
     }
-  }, [isOpen]);
+  }, [isOpen, stopListening]);
 
   // Parse phone live
   const parsedPhone = parsePhoneInput(
@@ -129,38 +147,6 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     }
     target.setHours(10, 0, 0, 0); // default 10:00 AM
     return target.toISOString();
-  };
-
-  const handleVoiceDictation = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error('Voice dictation is not supported in this browser.');
-      return;
-    }
-
-    if (isRecording) {
-      setIsRecording(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = dictationLang;
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onstart = () => setIsRecording(true);
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setNoteText(prev => (prev ? `${prev} ${transcript}` : transcript));
-        setIsRecording(false);
-      };
-      recognition.onerror = () => setIsRecording(false);
-      recognition.onend = () => setIsRecording(false);
-      recognition.start();
-    } catch {
-      setIsRecording(false);
-    }
   };
 
   const handleSubmit = async (andAddAnother = false) => {
@@ -476,13 +462,16 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     {/* Speech-to-Text (Voice Dictation) Button */}
                     <button
                       type="button"
-                      onClick={handleVoiceDictation}
-                      title="Voice dictation (speech-to-text)"
-                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
-                        isRecording ? 'bg-semantic-overdue text-white animate-pulse' : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary'
+                      onClick={() => toggleListening({ lang: dictationLang })}
+                      title={isListening ? 'Stop voice typing (Listening)' : 'Start voice typing (speech-to-text)'}
+                      className={`h-7 px-2 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer text-xs font-semibold ${
+                        isListening
+                          ? 'bg-semantic-overdue text-white animate-pulse shadow-xs'
+                          : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary hover:text-ink'
                       }`}
                     >
-                      <Mic size={14} />
+                      <Mic size={14} className={isListening ? 'animate-bounce' : ''} />
+                      <span className="text-[11px]">{isListening ? 'Listening...' : 'Voice'}</span>
                     </button>
                   </div>
                 </div>
@@ -495,6 +484,28 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   placeholder="Paste brief conversation note, requirements, or voice record..."
                   className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
                 />
+
+                {/* Live Dictation Status & Interim Preview */}
+                {isListening && (
+                  <div className="mt-1.5 flex items-center justify-between px-3 py-1.5 rounded-lg bg-surface-subtle border border-semantic-overdue/40 text-xs">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <span className="w-2 h-2 rounded-full bg-semantic-overdue animate-ping flex-shrink-0" />
+                      <span className="text-[11px] text-ink-muted flex-shrink-0">
+                        Listening ({dictationLang === 'en-US' ? 'EN' : 'HI'}):
+                      </span>
+                      <span className="font-medium text-ink italic truncate">
+                        {interimTranscript || 'Listening for your voice...'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => stopListening()}
+                      className="text-[11px] font-bold text-semantic-overdue hover:underline cursor-pointer ml-2 flex-shrink-0"
+                    >
+                      Done
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Accordion Toggle for More Details */}

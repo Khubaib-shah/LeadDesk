@@ -19,7 +19,7 @@ export const BottomLeftButtons: React.FC<BottomLeftButtonsProps> = ({
   onOpenHelp,
 }) => {
   return (
-    <div className="fixed bottom-5 left-5 z-40 hidden lg:flex flex-col gap-3">
+    <div className="fixed bottom-5 left-5 z-40 hidden xl:flex flex-col gap-3">
       {/* Theme Toggle Button (52x52, radius 20) */}
       <motion.button
         type="button"

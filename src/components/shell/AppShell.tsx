@@ -73,7 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         onOpenHelp={onOpenHelp}
       />
 
-      {/* Mobile Shell Component */}
+      {/* Mobile & Tablet Shell Component */}
       <MobileNav
         activeTab={activeTab}
         onTabChange={onTabChange}
@@ -82,13 +82,17 @@ export const AppShell: React.FC<AppShellProps> = ({
         followUpsCount={dueTodayCount}
         onOpenQuickAdd={onOpenQuickAdd}
         onOpenSettings={onOpenSettings}
+        onOpenTemplates={onOpenTemplates}
         onOpenHelp={onOpenHelp}
+        onClearDemoData={onClearDemoData}
+        isDark={isDark}
+        onToggleTheme={onToggleTheme}
       />
 
-      {/* Main Content Area: starts 112px from left, 100px from top */}
-      <main className="w-full min-h-screen pt-[104px] lg:pt-[96px] pb-28 lg:pb-12 px-4 sm:px-6 lg:pl-[104px] lg:pr-10 max-w-[1540px] mx-auto">
+      {/* Main Content Area: fluid width without arbitrary max-w restriction */}
+      <main className="w-full min-h-screen pt-[76px] sm:pt-[84px] xl:pt-[96px] pb-24 xl:pb-12 px-4 sm:px-6 md:px-8 xl:pl-[104px] xl:pr-10">
         {/* Soft top gradient fade mask so content scrolls gracefully under floating pills */}
-        <div className="hidden lg:block pointer-events-none fixed top-0 inset-x-0 h-14 bg-gradient-to-b from-canvas via-canvas/90 to-transparent z-30" />
+        <div className="hidden xl:block pointer-events-none fixed top-0 inset-x-0 h-14 bg-gradient-to-b from-canvas via-canvas/90 to-transparent z-30" />
 
         {/* Global Active Filter Banner if not ALL */}
         {activeFilter !== 'ALL' && (

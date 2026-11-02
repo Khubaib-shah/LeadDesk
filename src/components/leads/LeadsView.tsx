@@ -72,6 +72,32 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
 
+  // Real-time counts for all preset filters
+  const presetCounts = useMemo(() => {
+    return {
+      all: leads.filter(l => !l.archived).length,
+      due_today: leads.filter(l => !l.archived && isFollowUpDueToday(l.nextFollowUpAt)).length,
+      hot: leads.filter(l => !l.archived && l.temperature === 'Hot').length,
+      whatsapp: leads.filter(l => !l.archived && l.source === 'WhatsApp').length,
+      high_ticket: leads.filter(l => !l.archived && (l.estimatedValue || 0) >= 3000).length,
+      going_cold: leads.filter(l => !l.archived && isLeadGoingCold(l.lastContactedAt, 7)).length,
+      won: leads.filter(l => !l.archived && l.stage === 'Won').length,
+    };
+  }, [leads]);
+
+  const presetFilters = useMemo(
+    () => [
+      { id: 'all' as SavedPreset, label: 'All Leads', icon: <LayoutList size={13} />, count: presetCounts.all },
+      { id: 'due_today' as SavedPreset, label: 'Due Today', icon: <Clock size={13} className="text-amber-500" />, count: presetCounts.due_today },
+      { id: 'hot' as SavedPreset, label: 'Hot', icon: <Flame size={13} className="text-orange-500" />, count: presetCounts.hot },
+      { id: 'whatsapp' as SavedPreset, label: 'WhatsApp', icon: <FaWhatsapp size={13} className="text-[#25D366]" />, count: presetCounts.whatsapp },
+      { id: 'high_ticket' as SavedPreset, label: 'High-Ticket ($3k+)', icon: <Sparkles size={13} className="text-sky-500" />, count: presetCounts.high_ticket },
+      { id: 'going_cold' as SavedPreset, label: 'Going Cold', icon: <Snowflake size={13} className="text-cyan-500" />, count: presetCounts.going_cold },
+      { id: 'won' as SavedPreset, label: 'Won Deals', icon: <Trophy size={13} className="text-emerald-500" />, count: presetCounts.won },
+    ],
+    [presetCounts]
+  );
+
   // Apply Rail filter or saved preset
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
@@ -214,34 +240,52 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         </div>
       </div>
 
-      {/* Saved Preset Filter Chips (Strictly Icons, Zero Emojis) */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
-        {[
-          { id: 'all', label: 'All Leads', icon: <LayoutList size={13} /> },
-          { id: 'due_today', label: 'Due Today', icon: <Clock size={13} className="text-amber-500" /> },
-          { id: 'hot', label: 'Hot', icon: <Flame size={13} className="text-orange-500" /> },
-          { id: 'whatsapp', label: 'WhatsApp', icon: <FaWhatsapp size={13} className="text-[#25D366]" /> },
-          { id: 'high_ticket', label: 'High-Ticket ($3k+)', icon: <Sparkles size={13} className="text-sky-500" /> },
-          { id: 'going_cold', label: 'Going Cold', icon: <Snowflake size={13} className="text-cyan-500" /> },
-          { id: 'won', label: 'Won', icon: <Trophy size={13} className="text-emerald-500" /> },
-        ].map(preset => {
-          const isSelected = selectedPreset === preset.id;
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              onClick={() => setSelectedPreset(preset.id as SavedPreset)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
-                isSelected
-                  ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold shadow-xs'
-                  : 'bg-surface text-ink-secondary hover:text-ink border border-border-subtle/80'
-              }`}
-            >
-              {preset.icon}
-              <span>{preset.label}</span>
-            </button>
-          );
-        })}
+      {/* Saved Preset Filters (Non-scrolling: Native dropdown on mobile, wrapped pills on tablet/desktop) */}
+      <div className="w-full">
+        {/* Mobile (< sm): Clean Compact Dropdown (No scrolling, no truncated pills) */}
+        <div className="sm:hidden w-full">
+          <CustomSelect
+            value={selectedPreset}
+            onChange={val => setSelectedPreset(val as SavedPreset)}
+            className="w-full"
+            options={presetFilters.map(p => ({
+              value: p.id,
+              label: `${p.label} (${p.count})`,
+              icon: p.icon,
+            }))}
+          />
+        </div>
+
+        {/* Tablet & Desktop (>= sm): Clean Multi-Pill Wrap (Zero scrolling, zero scrollbars) */}
+        <div className="hidden sm:flex flex-wrap items-center gap-2 py-0.5">
+          {presetFilters.map(preset => {
+            const isSelected = selectedPreset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => setSelectedPreset(preset.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold shadow-xs'
+                    : 'bg-surface text-ink-secondary hover:text-ink hover:bg-surface-subtle border border-border-subtle/80'
+                }`}
+              >
+                {preset.icon}
+                <span>{preset.label}</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    isSelected
+                      ? 'bg-white/20 text-white dark:bg-black/10 dark:text-[#14161A]'
+                      : 'bg-surface-subtle text-ink-muted'
+                  }`}
+                >
+                  {preset.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Search & Filter Bar */}

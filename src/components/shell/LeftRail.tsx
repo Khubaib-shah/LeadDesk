@@ -34,7 +34,7 @@ export const LeftRail: React.FC<LeftRailProps> = ({ activeFilter, onFilterChange
   return (
     <aside
       aria-label="Quick Filter Rail"
-      className="fixed top-28 left-5 z-40 hidden lg:flex flex-col items-center w-[52px] p-1.5 gap-1 bg-surface border border-border-subtle/80 rounded-[20px] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)]"
+      className="fixed top-28 left-5 z-40 hidden xl:flex flex-col items-center w-[52px] p-1.5 gap-1 bg-surface border border-border-subtle/80 rounded-[20px] shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)]"
     >
       {RAIL_ITEMS.map(item => {
         const isActive = activeFilter === item.id;

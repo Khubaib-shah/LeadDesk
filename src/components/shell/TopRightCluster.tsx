@@ -43,7 +43,7 @@ export const TopRightCluster: React.FC<TopRightClusterProps> = ({
   }, [menuOpen]);
 
   return (
-    <div className="fixed top-5 right-5 lg:right-10 z-40 flex items-center gap-3">
+    <div className="fixed top-5 right-5 xl:right-10 z-40 hidden xl:flex items-center gap-3">
       {/* Due Today / All Clear Badge link */}
       <button
         type="button"

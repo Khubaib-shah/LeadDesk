@@ -19,7 +19,7 @@ export const LogoTile: React.FC<LogoTileProps> = ({ onClick }) => {
       whileTap={{ scale: 0.96 }}
       transition={{ type: 'spring', stiffness: 320, damping: 30 }}
       aria-label="LeadDesk Home"
-      className="fixed top-5 left-5 z-40 w-[52px] h-[52px] rounded-[18px] bg-surface border border-border-subtle/80 flex items-center justify-center shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)] cursor-pointer text-ink transition-colors"
+      className="fixed top-5 left-5 z-40 hidden xl:flex w-[52px] h-[52px] rounded-[18px] bg-surface border border-border-subtle/80 items-center justify-center shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)] cursor-pointer text-ink transition-colors"
     >
       {/* Custom LeadDesk Monogram: chat bubble with bold checkmark */}
       <svg

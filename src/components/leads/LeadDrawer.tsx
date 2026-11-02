@@ -30,7 +30,7 @@ import { Lead, LeadStage, LeadTemperature, InteractionType } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
 import { CustomSelect } from '../common/Select';
-import { useTextToSpeech } from '../../utils/speech';
+import { useTextToSpeech, useVoiceRecognition } from '../../utils/speech';
 import {
   getLeadDisplayName,
   buildWhatsAppUrl,
@@ -88,8 +88,21 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
   const [showWonModal, setShowWonModal] = useState(false);
   const [wonValueInput, setWonValueInput] = useState('');
   const [showLostModal, setShowLostModal] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
   const { isSpeaking, speak, stop } = useTextToSpeech();
+
+  const {
+    isListening: isInteractionListening,
+    interimTranscript: interactionInterim,
+    toggleListening: toggleInteractionListening,
+    stopListening: stopInteractionListening,
+  } = useVoiceRecognition({
+    onResult: (text, isInterim) => {
+      if (!isInterim && text.trim()) {
+        setInteractionText(prev => (prev ? `${prev.trim()} ${text.trim()}` : text.trim()));
+      }
+    },
+    onError: msg => toast.error(msg),
+  });
 
   if (!lead) return null;
 
@@ -484,21 +497,38 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
           <form onSubmit={handleLogInteractionSubmit} className="space-y-3 pt-3 border-t border-border-subtle">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Log Interaction</h3>
-              <div className="flex items-center gap-1">
-                {(['WhatsApp', 'Email', 'Call', 'Meeting', 'Note'] as InteractionType[]).map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setInteractionType(type)}
-                    className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
-                      interactionType === type
-                        ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold'
-                        : 'bg-surface-subtle text-ink-secondary hover:text-ink'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
+                  {(['WhatsApp', 'Email', 'Call', 'Meeting', 'Note'] as InteractionType[]).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setInteractionType(type)}
+                      className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+                        interactionType === type
+                          ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold'
+                          : 'bg-surface-subtle text-ink-secondary hover:text-ink'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Voice Typing Button */}
+                <button
+                  type="button"
+                  onClick={() => toggleInteractionListening()}
+                  title={isInteractionListening ? 'Stop voice typing (Listening)' : 'Start voice typing (Dictation)'}
+                  className={`h-6 px-2 rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                    isInteractionListening
+                      ? 'bg-semantic-overdue text-white animate-pulse shadow-xs'
+                      : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary hover:text-ink'
+                  }`}
+                >
+                  <Mic size={12} className={isInteractionListening ? 'animate-bounce' : ''} />
+                  <span>{isInteractionListening ? 'Listening...' : 'Voice'}</span>
+                </button>
               </div>
             </div>
 
@@ -511,6 +541,26 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                 placeholder={`Summary of ${interactionType}...`}
                 className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
               />
+
+              {/* Live Dictation Status & Interim Preview */}
+              {isInteractionListening && (
+                <div className="mt-1 flex items-center justify-between px-2.5 py-1 rounded-lg bg-surface-subtle border border-semantic-overdue/40 text-[11px]">
+                  <div className="flex items-center gap-1.5 overflow-hidden">
+                    <span className="w-1.5 h-1.5 rounded-full bg-semantic-overdue animate-ping flex-shrink-0" />
+                    <span className="text-ink-muted flex-shrink-0">Listening:</span>
+                    <span className="font-medium text-ink italic truncate">
+                      {interactionInterim || 'Speak now...'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => stopInteractionListening()}
+                    className="font-bold text-semantic-overdue hover:underline cursor-pointer ml-2 flex-shrink-0"
+                  >
+                    Done
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between gap-2">

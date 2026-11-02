@@ -25,7 +25,7 @@ export const NavPill: React.FC<NavPillProps> = ({ activeTab, onTabChange, follow
   return (
     <nav
       aria-label="Main Navigation"
-      className="fixed top-5 left-[84px] z-40 hidden lg:flex items-center h-[48px] p-1 bg-surface border border-border-subtle/80 rounded-full shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)]"
+      className="fixed top-5 left-[84px] z-40 hidden xl:flex items-center h-[48px] p-1 bg-surface border border-border-subtle/80 rounded-full shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)]"
     >
       <div className="flex items-center gap-0.5">
         {TABS.map(tab => {
