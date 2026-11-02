@@ -35,7 +35,7 @@ export const NavPill: React.FC<NavPillProps> = ({ activeTab, onTabChange, follow
               key={tab.id}
               type="button"
               onClick={() => onTabChange(tab.id)}
-              className="relative px-4 h-10 flex items-center justify-center rounded-full text-[13px] font-semibold tracking-[0.08em] select-none cursor-pointer text-ink transition-colors focus-visible:outline-2 focus-visible:outline-ink"
+              className="relative px-4 h-10 flex items-center justify-center rounded-full text-[13px] font-semibold tracking-[0.08em] select-none cursor-pointer text-ink transition-colors outline-none focus:outline-none"
             >
               {isActive && (
                 <motion.div
@@ -48,7 +48,7 @@ export const NavPill: React.FC<NavPillProps> = ({ activeTab, onTabChange, follow
                 {tab.label}
                 {tab.id === 'FOLLOW-UPS' && followUpsCount > 0 && (
                   <span
-                    className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[11px] font-bold rounded-full bg-lime text-ink"
+                    className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[11px] font-bold rounded-full bg-lime text-[#14161A]"
                     aria-label={`${followUpsCount} follow-ups due`}
                   >
                     {followUpsCount}

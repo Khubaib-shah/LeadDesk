@@ -124,10 +124,10 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
         <button
           type="button"
           onClick={onStartFocusMode}
-          className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-xs self-start sm:self-auto"
+          className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer shadow-xs self-start sm:self-auto"
         >
-          <Zap size={15} strokeWidth={2.8} />
-          <span>Start Follow-ups (Focus Mode)</span>
+          <Zap size={15} strokeWidth={2.8} className="text-[#14161A]" />
+          <span className="text-[#14161A]">Start Follow-ups (Focus Mode)</span>
         </button>
       </div>
 
@@ -138,7 +138,7 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
             key={idx}
             className={`p-3 rounded-2xl border text-center transition-all ${
               idx === 0
-                ? 'bg-surface border-lime shadow-xs ring-1 ring-lime/40'
+                ? 'bg-active-chip/50 border-border-strong shadow-xs'
                 : 'bg-surface border-border-subtle/80'
             }`}
           >
@@ -151,7 +151,7 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
             <div className="mt-1 flex items-center justify-center">
               <span
                 className={`inline-block px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                  day.count > 0 ? 'bg-lime text-ink' : 'text-ink-disabled'
+                  day.count > 0 ? 'bg-lime text-[#14161A]' : 'text-ink-disabled'
                 }`}
               >
                 {day.count}
@@ -191,7 +191,7 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
         >
           <span>Today</span>
           {todayLeads.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-lime text-ink font-bold">
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-lime text-[#14161A] font-bold">
               {todayLeads.length}
             </span>
           )}
@@ -285,10 +285,10 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveInlineSchedulerId(showScheduler ? null : lead.id)}
-                    className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover text-ink text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
+                    className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover text-[#14161A] text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
                   >
-                    <Check size={14} strokeWidth={2.8} />
-                    <span>Done</span>
+                    <Check size={14} strokeWidth={2.8} className="text-[#14161A]" />
+                    <span className="text-[#14161A]">Done</span>
                   </button>
 
                   <button
@@ -324,7 +324,7 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleMarkDoneInline(lead, '2d')}
-                      className="px-2.5 py-1 rounded-lg bg-lime text-ink font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-lime text-[#14161A] font-bold cursor-pointer"
                     >
                       +2 Days
                     </button>

@@ -22,11 +22,15 @@ import {
   ExternalLink,
   ChevronRight,
   CheckCircle2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Lead, LeadStage, LeadTemperature, InteractionType } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
+import { CustomSelect } from '../common/Select';
+import { useTextToSpeech } from '../../utils/speech';
 import {
   getLeadDisplayName,
   buildWhatsAppUrl,
@@ -85,6 +89,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
   const [wonValueInput, setWonValueInput] = useState('');
   const [showLostModal, setShowLostModal] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const { isSpeaking, speak, stop } = useTextToSpeech();
 
   if (!lead) return null;
 
@@ -190,7 +195,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
     });
     setShowWonModal(false);
     confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-    toast.success(`🎉 Lead marked WON at $${val.toLocaleString()}!`);
+    toast.success(`Lead marked WON at $${val.toLocaleString()}!`);
   };
 
   const handleMarkLost = async (reason: string) => {
@@ -239,17 +244,13 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
 
               {/* Stage & Temperature Switchers */}
               <div className="flex items-center gap-2 mt-2">
-                <select
+                <CustomSelect
+                  size="sm"
                   value={lead.stage}
-                  onChange={e => onUpdateLead(lead.id, { stage: e.target.value as LeadStage })}
-                  className="px-2.5 py-1 rounded-md text-xs font-semibold bg-surface-subtle border border-border-subtle text-ink cursor-pointer focus:outline-none"
-                >
-                  {STAGES.map(s => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  onChange={val => onUpdateLead(lead.id, { stage: val as LeadStage })}
+                  className="w-36"
+                  options={STAGES.map(s => ({ value: s, label: s }))}
+                />
 
                 <div className="flex items-center p-0.5 bg-surface-subtle rounded-md border border-border-subtle">
                   {TEMPERATURES.map(t => (
@@ -340,23 +341,40 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
 
           {/* WhatsApp Template Picker & Live Preview */}
           <div className="p-4 rounded-2xl bg-surface-subtle/80 border border-border-subtle space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink">Choose Message Template:</span>
-              <select
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-ink">Message Template:</span>
+              <CustomSelect
+                size="sm"
                 value={selectedTemplateId}
-                onChange={e => setSelectedTemplateId(e.target.value)}
-                className="px-2 py-1 rounded-md text-xs font-semibold bg-surface border border-border-subtle text-ink cursor-pointer"
-              >
-                {SEED_TEMPLATES.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
+                onChange={val => setSelectedTemplateId(val)}
+                className="w-48"
+                options={SEED_TEMPLATES.map(t => ({
+                  value: t.id,
+                  label: t.title,
+                }))}
+              />
             </div>
-            <p className="text-xs text-ink-secondary bg-surface p-3 rounded-xl border border-border-subtle/60 italic leading-relaxed">
-              "{filledMessage}"
-            </p>
+            <div className="relative bg-surface p-3 rounded-xl border border-border-subtle/60">
+              <p className="text-xs text-ink-secondary italic leading-relaxed pr-8">
+                "{filledMessage}"
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isSpeaking) {
+                    stop();
+                  } else {
+                    speak(filledMessage);
+                  }
+                }}
+                title={isSpeaking ? 'Stop text-to-speech' : 'Listen to message (Text-to-Speech)'}
+                className={`absolute top-2.5 right-2.5 w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                  isSpeaking ? 'bg-lime text-[#14161A]' : 'hover:bg-surface-subtle text-ink-secondary'
+                }`}
+              >
+                {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+              </button>
+            </div>
           </div>
 
           {/* Next Follow-up Section */}
@@ -375,10 +393,10 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
               <button
                 type="button"
                 onClick={handleDoneFollowUp}
-                className="flex-1 h-9 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                className="flex-1 h-9 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                <CheckCircle2 size={14} />
-                <span>Mark Done</span>
+                <CheckCircle2 size={14} className="text-[#14161A]" />
+                <span className="text-[#14161A]">Mark Done</span>
               </button>
 
               <div className="flex items-center gap-1">
@@ -424,9 +442,27 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
             )}
 
             {lead.summary && (
-              <div className="p-3 rounded-xl bg-surface-subtle text-xs">
-                <span className="text-ink-muted block text-[11px]">Discussion Summary</span>
-                <p className="font-medium text-ink mt-0.5 leading-relaxed">{lead.summary}</p>
+              <div className="relative p-3 rounded-xl bg-surface-subtle text-xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-ink-muted text-[11px]">Discussion Summary</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isSpeaking) {
+                        stop();
+                      } else {
+                        speak(lead.summary || '');
+                      }
+                    }}
+                    title={isSpeaking ? 'Stop text-to-speech' : 'Read notes aloud (Text-to-Speech)'}
+                    className={`w-6 h-6 rounded flex items-center justify-center transition-colors cursor-pointer ${
+                      isSpeaking ? 'bg-lime text-[#14161A]' : 'hover:bg-border-subtle text-ink-secondary'
+                    }`}
+                  >
+                    {isSpeaking ? <VolumeX size={13} /> : <Volume2 size={13} />}
+                  </button>
+                </div>
+                <p className="font-medium text-ink leading-relaxed">{lead.summary}</p>
               </div>
             )}
 
@@ -456,7 +492,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                     onClick={() => setInteractionType(type)}
                     className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
                       interactionType === type
-                        ? 'bg-ink text-white dark:bg-white dark:text-ink font-bold'
+                        ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold'
                         : 'bg-surface-subtle text-ink-secondary hover:text-ink'
                     }`}
                   >
@@ -473,35 +509,35 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                 value={interactionText}
                 onChange={e => setInteractionText(e.target.value)}
                 placeholder={`Summary of ${interactionType}...`}
-                className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:ring-2 focus:ring-ink"
+                className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1 text-[11px] text-ink-muted">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] text-ink-muted">
                 <span>Next follow-up:</span>
-                <select
-                  value={nextCadenceDays === null ? 'none' : nextCadenceDays}
-                  onChange={e =>
-                    setNextCadenceDays(e.target.value === 'none' ? null : parseInt(e.target.value))
-                  }
-                  className="px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-ink cursor-pointer"
-                >
-                  <option value={2}>+2 days</option>
-                  <option value={3}>+3 days</option>
-                  <option value={5}>+5 days</option>
-                  <option value={10}>+10 days</option>
-                  <option value="none">None</option>
-                </select>
+                <CustomSelect
+                  size="sm"
+                  value={nextCadenceDays === null ? 'none' : String(nextCadenceDays)}
+                  onChange={val => setNextCadenceDays(val === 'none' ? null : parseInt(val))}
+                  className="w-28"
+                  options={[
+                    { value: '2', label: '+2 days' },
+                    { value: '3', label: '+3 days' },
+                    { value: '5', label: '+5 days' },
+                    { value: '10', label: '+10 days' },
+                    { value: 'none', label: 'None' },
+                  ]}
+                />
               </div>
 
               <button
                 type="submit"
                 disabled={!interactionText.trim()}
-                className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover disabled:opacity-40 text-ink text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover disabled:opacity-40 text-[#14161A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                <Send size={12} />
-                <span>Log</span>
+                <Send size={12} className="text-[#14161A]" />
+                <span className="text-[#14161A]">Log</span>
               </button>
             </div>
           </form>
@@ -608,9 +644,9 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
               <button
                 type="button"
                 onClick={handleMarkWon}
-                className="px-4 h-9 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs cursor-pointer"
+                className="px-4 h-9 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs cursor-pointer shadow-xs"
               >
-                Confirm Won Deal
+                <span className="text-[#14161A]">Confirm Won Deal</span>
               </button>
             </div>
           </motion.div>

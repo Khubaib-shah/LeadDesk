@@ -22,11 +22,15 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  Flame,
+  Snowflake,
+  Trophy,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Lead, LeadSource, LeadStage, LeadTemperature, RailFilter } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
+import { CustomSelect } from '../common/Select';
 import {
   getLeadDisplayName,
   formatFollowUpDateDisplay,
@@ -202,24 +206,24 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           <button
             type="button"
             onClick={onOpenQuickAdd}
-            className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
           >
-            <Plus size={16} strokeWidth={2.8} />
-            <span>Add Lead (N)</span>
+            <Plus size={16} strokeWidth={2.8} className="text-[#14161A]" />
+            <span className="text-[#14161A]">Add Lead (N)</span>
           </button>
         </div>
       </div>
 
-      {/* Saved Preset Filter Chips */}
+      {/* Saved Preset Filter Chips (Strictly Icons, Zero Emojis) */}
       <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
         {[
-          { id: 'all', label: 'All Leads' },
-          { id: 'due_today', label: 'Due Today' },
-          { id: 'hot', label: '🔥 Hot' },
-          { id: 'whatsapp', label: 'WhatsApp' },
-          { id: 'high_ticket', label: '💎 High-Ticket ($3k+)' },
-          { id: 'going_cold', label: '❄️ Going Cold' },
-          { id: 'won', label: '🏆 Won' },
+          { id: 'all', label: 'All Leads', icon: <LayoutList size={13} /> },
+          { id: 'due_today', label: 'Due Today', icon: <Clock size={13} className="text-amber-500" /> },
+          { id: 'hot', label: 'Hot', icon: <Flame size={13} className="text-orange-500" /> },
+          { id: 'whatsapp', label: 'WhatsApp', icon: <FaWhatsapp size={13} className="text-[#25D366]" /> },
+          { id: 'high_ticket', label: 'High-Ticket ($3k+)', icon: <Sparkles size={13} className="text-sky-500" /> },
+          { id: 'going_cold', label: 'Going Cold', icon: <Snowflake size={13} className="text-cyan-500" /> },
+          { id: 'won', label: 'Won', icon: <Trophy size={13} className="text-emerald-500" /> },
         ].map(preset => {
           const isSelected = selectedPreset === preset.id;
           return (
@@ -227,13 +231,14 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               key={preset.id}
               type="button"
               onClick={() => setSelectedPreset(preset.id as SavedPreset)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer flex items-center gap-1.5 ${
                 isSelected
-                  ? 'bg-ink text-white dark:bg-white dark:text-ink font-bold shadow-xs'
+                  ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold shadow-xs'
                   : 'bg-surface text-ink-secondary hover:text-ink border border-border-subtle/80'
               }`}
             >
-              {preset.label}
+              {preset.icon}
+              <span>{preset.label}</span>
             </button>
           );
         })}
@@ -250,48 +255,50 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search name, phone, notes, tags..."
-            className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:ring-2 focus:ring-ink"
+            className="w-full h-10 pl-9 pr-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
           />
         </div>
 
         {/* Filter Dropdowns & View Toggles */}
         <div className="flex items-center gap-2 w-full md:w-auto justify-end overflow-x-auto">
-          {/* Source Dropdown */}
-          <select
+          {/* Custom Source Dropdown */}
+          <CustomSelect
             value={selectedSource}
-            onChange={e => setSelectedSource(e.target.value)}
-            className="h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink cursor-pointer focus:outline-none"
-          >
-            <option value="all">All Sources</option>
-            <option value="WhatsApp">WhatsApp</option>
-            <option value="TikTok">TikTok</option>
-            <option value="Instagram">Instagram</option>
-            <option value="YouTube">YouTube</option>
-            <option value="LinkedIn">LinkedIn</option>
-          </select>
+            onChange={val => setSelectedSource(val)}
+            className="w-36 shrink-0"
+            options={[
+              { value: 'all', label: 'All Sources' },
+              { value: 'WhatsApp', label: 'WhatsApp', icon: <FaWhatsapp size={13} className="text-[#25D366]" /> },
+              { value: 'TikTok', label: 'TikTok' },
+              { value: 'Instagram', label: 'Instagram' },
+              { value: 'YouTube', label: 'YouTube' },
+              { value: 'LinkedIn', label: 'LinkedIn' },
+            ]}
+          />
 
-          {/* Stage Dropdown */}
-          <select
+          {/* Custom Stage Dropdown */}
+          <CustomSelect
             value={selectedStage}
-            onChange={e => setSelectedStage(e.target.value)}
-            className="h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink cursor-pointer focus:outline-none"
-          >
-            <option value="all">All Stages</option>
-            <option value="New">New</option>
-            <option value="Contacted">Contacted</option>
-            <option value="Qualified">Qualified</option>
-            <option value="Proposal sent">Proposal sent</option>
-            <option value="Negotiation">Negotiation</option>
-            <option value="Won">Won</option>
-            <option value="Lost">Lost</option>
-          </select>
+            onChange={val => setSelectedStage(val)}
+            className="w-36 shrink-0"
+            options={[
+              { value: 'all', label: 'All Stages' },
+              { value: 'New', label: 'New' },
+              { value: 'Contacted', label: 'Contacted' },
+              { value: 'Qualified', label: 'Qualified' },
+              { value: 'Proposal sent', label: 'Proposal sent' },
+              { value: 'Negotiation', label: 'Negotiation' },
+              { value: 'Won', label: 'Won' },
+              { value: 'Lost', label: 'Lost' },
+            ]}
+          />
 
           {/* Sort field */}
           <button
             type="button"
             onClick={() => setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'))}
             title={`Sort order: ${sortOrder}`}
-            className="h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink flex items-center gap-1.5 cursor-pointer"
+            className="h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink flex items-center gap-1.5 cursor-pointer hover:bg-surface transition-colors"
           >
             <ArrowUpDown size={14} />
             <span className="capitalize">{sortOrder}</span>
@@ -429,19 +436,21 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                       </td>
 
                       <td className="py-2 px-3" onClick={e => e.stopPropagation()}>
-                        <select
+                        <CustomSelect
+                          size="sm"
                           value={lead.stage}
-                          onChange={e => onUpdateLead(lead.id, { stage: e.target.value as LeadStage })}
-                          className="px-2 py-0.5 rounded text-[11px] font-semibold bg-surface-subtle border border-border-subtle text-ink cursor-pointer"
-                        >
-                          <option value="New">New</option>
-                          <option value="Contacted">Contacted</option>
-                          <option value="Qualified">Qualified</option>
-                          <option value="Proposal sent">Proposal sent</option>
-                          <option value="Negotiation">Negotiation</option>
-                          <option value="Won">Won</option>
-                          <option value="Lost">Lost</option>
-                        </select>
+                          onChange={val => onUpdateLead(lead.id, { stage: val as LeadStage })}
+                          className="w-32"
+                          options={[
+                            { value: 'New', label: 'New' },
+                            { value: 'Contacted', label: 'Contacted' },
+                            { value: 'Qualified', label: 'Qualified' },
+                            { value: 'Proposal sent', label: 'Proposal sent' },
+                            { value: 'Negotiation', label: 'Negotiation' },
+                            { value: 'Won', label: 'Won' },
+                            { value: 'Lost', label: 'Lost' },
+                          ]}
+                        />
                       </td>
 
                       <td className="py-2 px-3">

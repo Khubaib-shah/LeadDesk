@@ -65,10 +65,10 @@ export const TodayFollowUpsCard: React.FC<TodayFollowUpsCardProps> = ({
           onClick={onStartFocusMode}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          className="w-full h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-ink font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
+          className="w-full h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-xs"
         >
-          <span>Start follow-ups</span>
-          <ArrowRight size={14} strokeWidth={2.5} />
+          <span className="text-[#14161A]">Start follow-ups</span>
+          <ArrowRight size={14} strokeWidth={2.5} className="text-[#14161A]" />
         </motion.button>
       </div>
     </div>

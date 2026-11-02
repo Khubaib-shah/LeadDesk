@@ -36,10 +36,10 @@ export const RecentLeadsCard: React.FC<RecentLeadsCardProps> = ({
         <button
           type="button"
           onClick={onViewAll}
-          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-ink font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
         >
-          <span>View all</span>
-          <ArrowRight size={13} strokeWidth={2.5} />
+          <span className="text-[#14161A]">View all</span>
+          <ArrowRight size={13} strokeWidth={2.5} className="text-[#14161A]" />
         </button>
       </div>
 

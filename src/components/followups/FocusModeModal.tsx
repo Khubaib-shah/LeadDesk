@@ -56,8 +56,8 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
       {/* Top Header */}
       <div className="flex items-center justify-between max-w-xl w-full mx-auto text-white">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-lime text-ink flex items-center justify-center font-bold">
-            <Zap size={16} />
+          <div className="w-8 h-8 rounded-full bg-lime text-[#14161A] flex items-center justify-center font-bold">
+            <Zap size={16} className="text-[#14161A]" strokeWidth={2.8} />
           </div>
           <div>
             <h2 className="text-sm font-bold tracking-tight">Focus Follow-up Mode</h2>
@@ -148,10 +148,10 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
                   <button
                     type="button"
                     onClick={handleActionDone}
-                    className="flex-1 h-11 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    className="flex-1 h-11 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
-                    <Check size={16} strokeWidth={2.8} />
-                    <span>Mark Done</span>
+                    <Check size={16} strokeWidth={2.8} className="text-[#14161A]" />
+                    <span className="text-[#14161A]">Mark Done</span>
                   </button>
                 </div>
               </div>
@@ -162,8 +162,8 @@ export const FocusModeModal: React.FC<FocusModeModalProps> = ({
               animate={{ scale: 1, opacity: 1 }}
               className="w-full bg-surface text-ink rounded-3xl p-8 shadow-2xl text-center space-y-4 max-w-sm"
             >
-              <div className="w-16 h-16 rounded-full bg-lime text-ink mx-auto flex items-center justify-center font-bold shadow-sm">
-                <Check size={32} strokeWidth={3} />
+              <div className="w-16 h-16 rounded-full bg-lime text-[#14161A] mx-auto flex items-center justify-center font-bold shadow-sm">
+                <Check size={32} strokeWidth={3} className="text-[#14161A]" />
               </div>
               <h3 className="text-xl font-bold text-ink">You're All Caught Up!</h3>
               <p className="text-xs text-ink-muted">

@@ -105,8 +105,47 @@ body {
   background: rgba(100, 116, 139, 0.35);
 }
 
-/* Focus outline accessibility */
-*:focus-visible {
-  outline: 2px solid var(--color-ink);
-  outline-offset: 2px;
+/* Remove intrusive browser focus rings / outlines / glow rings across all elements */
+*,
+*:focus,
+*:focus-visible,
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none;
 }
+
+/* Enforce dark ink contrast on all lime elements in both light and dark mode */
+.bg-lime,
+.bg-lime-hover,
+button.bg-lime,
+button.bg-lime-hover,
+div.bg-lime,
+span.bg-lime,
+a.bg-lime {
+  background-color: var(--color-lime) !important;
+  color: #14161A !important;
+}
+
+.bg-lime *,
+.bg-lime-hover *,
+button.bg-lime *,
+span.bg-lime * {
+  color: #14161A !important;
+}
+
+.bg-lime svg,
+.bg-lime-hover svg,
+.bg-lime * svg,
+button.bg-lime svg,
+span.bg-lime svg {
+  color: #14161A !important;
+  stroke: #14161A !important;
+}
+

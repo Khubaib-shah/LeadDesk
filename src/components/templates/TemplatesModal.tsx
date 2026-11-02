@@ -76,7 +76,7 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
                   onClick={() => setSelectedTemplate(tpl)}
                   className={`w-full p-3 rounded-2xl text-left border transition-all cursor-pointer ${
                     isSelected
-                      ? 'bg-lime/20 border-lime shadow-xs'
+                      ? 'bg-active-chip border-border-strong shadow-xs'
                       : 'bg-surface hover:bg-surface-subtle border-border-subtle/80'
                   }`}
                 >
@@ -154,10 +154,10 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
               <button
                 type="button"
                 onClick={() => handleCopy(previewBody, selectedTemplate.id)}
-                className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
+                className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
               >
-                {copiedId === selectedTemplate.id ? <Check size={15} /> : <Copy size={15} />}
-                <span>{copiedId === selectedTemplate.id ? 'Copied!' : 'Copy Formatted Text'}</span>
+                {copiedId === selectedTemplate.id ? <Check size={15} className="text-[#14161A]" /> : <Copy size={15} className="text-[#14161A]" />}
+                <span className="text-[#14161A]">{copiedId === selectedTemplate.id ? 'Copied!' : 'Copy Formatted Text'}</span>
               </button>
             </div>
           </div>

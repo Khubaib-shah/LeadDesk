@@ -64,8 +64,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-lime flex items-center justify-center text-ink font-bold">
-                <Video size={15} />
+              <div className="w-7 h-7 rounded-lg bg-lime flex items-center justify-center text-[#14161A] font-bold">
+                <Video size={15} className="text-[#14161A]" />
               </div>
               <h2 className="text-base font-bold text-ink tracking-tight">Content Attribution Leaderboard</h2>
             </div>

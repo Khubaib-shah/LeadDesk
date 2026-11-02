@@ -36,8 +36,8 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-lime text-ink flex items-center justify-center font-bold">
-              <Keyboard size={18} />
+            <div className="w-8 h-8 rounded-xl bg-lime text-[#14161A] flex items-center justify-center font-bold">
+              <Keyboard size={18} className="text-[#14161A]" />
             </div>
             <div>
               <h2 className="text-base font-bold text-ink">Shortcuts & Speed Tips</h2>

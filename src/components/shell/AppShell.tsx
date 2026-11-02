@@ -94,15 +94,15 @@ export const AppShell: React.FC<AppShellProps> = ({
         {activeFilter !== 'ALL' && (
           <div className="mb-4 flex items-center gap-2">
             <span className="text-xs text-ink-muted">Filtered by:</span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-lime text-ink shadow-xs">
-              <span>{activeFilter.replace('_', ' ')}</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-lime text-[#14161A] shadow-xs">
+              <span className="text-[#14161A]">{activeFilter.replace('_', ' ')}</span>
               <button
                 type="button"
                 onClick={() => onFilterChange('ALL')}
-                className="hover:opacity-75 cursor-pointer ml-1"
+                className="hover:opacity-75 cursor-pointer ml-1 text-[#14161A]"
                 aria-label="Clear quick filter"
               >
-                <X size={12} strokeWidth={3} />
+                <X size={12} strokeWidth={3} className="text-[#14161A]" />
               </button>
             </span>
           </div>

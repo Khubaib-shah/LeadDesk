@@ -54,10 +54,10 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ data, onExportCsv })
           <button
             type="button"
             onClick={onExportCsv}
-            className="h-8 px-3 rounded-[10px] bg-lime hover:bg-lime-hover text-ink font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="h-8 px-3 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
           >
-            <Download size={13} strokeWidth={2.5} />
-            <span>Export</span>
+            <Download size={13} strokeWidth={2.5} className="text-[#14161A]" />
+            <span className="text-[#14161A]">Export</span>
           </button>
         </div>
       </div>

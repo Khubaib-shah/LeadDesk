@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { X, Save, RotateCcw, Download, Moon, Sun, ShieldCheck } from 'lucide-react';
 import { AppSettings } from '../../types';
+import { CustomSelect } from '../common/Select';
 import { toast } from 'sonner';
 
 interface SettingsModalProps {
@@ -101,33 +102,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">Default Country</label>
-                <select
+                <CustomSelect
                   value={defaultCountryCode}
-                  onChange={e => setDefaultCountryCode(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink cursor-pointer"
-                >
-                  <option value="US">United States (+1)</option>
-                  <option value="IN">India (+91)</option>
-                  <option value="PK">Pakistan (+92)</option>
-                  <option value="AE">UAE (+971)</option>
-                  <option value="GB">United Kingdom (+44)</option>
-                  <option value="SG">Singapore (+65)</option>
-                </select>
+                  onChange={val => setDefaultCountryCode(val)}
+                  className="w-full"
+                  options={[
+                    { value: 'US', label: 'United States (+1)' },
+                    { value: 'IN', label: 'India (+91)' },
+                    { value: 'PK', label: 'Pakistan (+92)' },
+                    { value: 'AE', label: 'UAE (+971)' },
+                    { value: 'GB', label: 'United Kingdom (+44)' },
+                    { value: 'SG', label: 'Singapore (+65)' },
+                  ]}
+                />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-ink mb-1">Default Currency</label>
-                <select
+                <CustomSelect
                   value={defaultCurrency}
-                  onChange={e => setDefaultCurrency(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink cursor-pointer"
-                >
-                  <option value="USD">USD ($)</option>
-                  <option value="EUR">EUR (€)</option>
-                  <option value="GBP">GBP (£)</option>
-                  <option value="INR">INR (₹)</option>
-                  <option value="AED">AED (AED)</option>
-                </select>
+                  onChange={val => setDefaultCurrency(val)}
+                  className="w-full"
+                  options={[
+                    { value: 'USD', label: 'USD ($)' },
+                    { value: 'EUR', label: 'EUR (€)' },
+                    { value: 'GBP', label: 'GBP (£)' },
+                    { value: 'INR', label: 'INR (₹)' },
+                    { value: 'AED', label: 'AED (AED)' },
+                  ]}
+                />
               </div>
             </div>
 
@@ -189,10 +192,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 h-10 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-5 h-10 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <Save size={14} />
-              <span>Save Changes</span>
+              <Save size={14} className="text-[#14161A]" />
+              <span className="text-[#14161A]">Save Changes</span>
             </button>
           </div>
         </form>

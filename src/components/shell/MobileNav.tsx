@@ -82,7 +82,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 onClick={() => onFilterChange(isActive && f.id !== 'ALL' ? 'ALL' : f.id)}
                 className={`snap-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                   isActive
-                    ? 'bg-lime text-ink shadow-xs'
+                    ? 'bg-lime text-[#14161A] font-bold shadow-xs'
                     : 'bg-surface/90 text-ink-secondary border border-border-subtle/80 backdrop-blur-sm'
                 }`}
               >
@@ -128,10 +128,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           type="button"
           onClick={onOpenQuickAdd}
           whileTap={{ scale: 0.92 }}
-          className="w-12 h-12 rounded-full bg-lime text-ink flex items-center justify-center shadow-md -translate-y-2 cursor-pointer font-bold"
+          className="w-12 h-12 rounded-full bg-lime text-[#14161A] flex items-center justify-center shadow-md -translate-y-2 cursor-pointer font-bold"
           aria-label="Quick Add Lead"
         >
-          <Plus size={24} strokeWidth={3} />
+          <Plus size={24} strokeWidth={3} className="text-[#14161A]" />
         </motion.button>
 
         <button
@@ -145,7 +145,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           <Clock size={20} strokeWidth={activeTab === 'FOLLOW-UPS' ? 2.5 : 2} />
           <span className="text-[10px] mt-0.5">Follow-ups</span>
           {followUpsCount > 0 && (
-            <span className="absolute top-1 right-2 min-w-[16px] h-4 px-1 rounded-full bg-lime text-ink font-bold text-[9px] flex items-center justify-center">
+            <span className="absolute top-1 right-2 min-w-[16px] h-4 px-1 rounded-full bg-lime text-[#14161A] font-bold text-[9px] flex items-center justify-center">
               {followUpsCount}
             </span>
           )}

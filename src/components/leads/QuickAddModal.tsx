@@ -5,9 +5,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mic, AlertCircle, Sparkles, ChevronDown, Check, ArrowRight } from 'lucide-react';
+import { X, Mic, AlertCircle, Sparkles, ChevronDown, Check, ArrowRight, Volume2, VolumeX } from 'lucide-react';
 import { Lead, LeadSource, LeadPurpose } from '../../types';
 import { parsePhoneInput, findDuplicatePhone } from '../../utils/phone';
+import { useTextToSpeech } from '../../utils/speech';
+import { CustomSelect } from '../common/Select';
+import { DateTimePicker } from '../common/DateTimePicker';
 import { FaWhatsapp, FaInstagram, FaTiktok, FaYoutube, FaLinkedinIn } from 'react-icons/fa6';
 import { toast } from 'sonner';
 
@@ -75,6 +78,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [dictationLang, setDictationLang] = useState<'en-US' | 'hi-IN'>('en-US');
   const [showFullForm, setShowFullForm] = useState(false);
+  const { isSpeaking, speak, stop } = useTextToSpeech();
 
   // Additional full form fields
   const [email, setEmail] = useState('');
@@ -283,18 +287,16 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   WhatsApp Number <span className="text-semantic-overdue">*</span>
                 </label>
                 <div className="flex items-center gap-2">
-                  {/* Country ISO code and Dial Code Selector */}
-                  <select
+                  {/* Custom Country ISO and Dial Code Selector */}
+                  <CustomSelect
                     value={selectedCountry}
-                    onChange={e => setSelectedCountry(e.target.value)}
-                    className="h-11 px-2.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-semibold text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-ink"
-                  >
-                    {COUNTRY_DIAL_CODES.map(c => (
-                      <option key={c.code} value={c.code}>
-                        {c.code} ({c.dial})
-                      </option>
-                    ))}
-                  </select>
+                    onChange={val => setSelectedCountry(val)}
+                    className="w-32 shrink-0"
+                    options={COUNTRY_DIAL_CODES.map(c => ({
+                      value: c.code,
+                      label: `${c.code} (${c.dial})`,
+                    }))}
+                  />
 
                   <div className="relative flex-1">
                     <input
@@ -303,7 +305,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                       value={phoneRaw}
                       onChange={e => setPhoneRaw(e.target.value)}
                       placeholder="e.g. 415 555 2671 or paste wa.me"
-                      className="w-full h-11 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-sm text-ink placeholder:text-ink-disabled focus:outline-none focus:ring-2 focus:ring-ink"
+                      className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
                     />
                   </div>
                 </div>
@@ -326,7 +328,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
                   placeholder="e.g. Marcus Vance or Leave empty"
-                  className="w-full h-11 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-sm text-ink placeholder:text-ink-disabled focus:outline-none focus:ring-2 focus:ring-ink"
+                  className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
                 />
               </div>
 
@@ -345,7 +347,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                         onClick={() => setSource(s.id)}
                         className={`h-9 px-2 rounded-xl flex items-center justify-center gap-1.5 text-xs font-semibold border transition-all cursor-pointer ${
                           isSelected
-                            ? 'bg-lime text-ink border-lime shadow-xs font-bold'
+                            ? 'bg-lime text-[#14161A] border-lime shadow-xs font-bold'
                             : 'bg-surface-subtle text-ink-secondary border-border-subtle/80 hover:bg-surface hover:text-ink'
                         }`}
                       >
@@ -426,20 +428,21 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                 </div>
 
                 {followUpPreset === 'custom' && (
-                  <input
-                    type="datetime-local"
-                    value={customFollowUpDate}
-                    onChange={e => setCustomFollowUpDate(e.target.value)}
-                    className="mt-2 w-full h-10 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
-                  />
+                  <div className="mt-2">
+                    <DateTimePicker
+                      value={customFollowUpDate}
+                      onChange={val => setCustomFollowUpDate(val)}
+                      placeholder="Select custom date & time"
+                    />
+                  </div>
                 )}
               </div>
 
-              {/* 6. What did they say? (Note + Voice Dictation) */}
+              {/* 6. What did they say? (Notes + Voice Dictation + Text-to-Speech) */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="text-xs font-semibold text-ink">What did they say? (Notes)</label>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setDictationLang(dictationLang === 'en-US' ? 'hi-IN' : 'en-US')}
@@ -447,6 +450,30 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                     >
                       {dictationLang === 'en-US' ? 'EN' : 'HI'}
                     </button>
+
+                    {/* Text-to-Speech (Read Aloud) Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSpeaking) {
+                          stop();
+                        } else {
+                          if (!noteText.trim()) {
+                            toast.info('Enter some note text to read aloud');
+                            return;
+                          }
+                          speak(noteText, dictationLang);
+                        }
+                      }}
+                      title={isSpeaking ? 'Stop text-to-speech' : 'Read notes aloud (Text-to-Speech)'}
+                      className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                        isSpeaking ? 'bg-lime text-[#14161A]' : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary'
+                      }`}
+                    >
+                      {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    </button>
+
+                    {/* Speech-to-Text (Voice Dictation) Button */}
                     <button
                       type="button"
                       onClick={handleVoiceDictation}
@@ -466,7 +493,7 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
                   value={noteText}
                   onChange={e => setNoteText(e.target.value)}
                   placeholder="Paste brief conversation note, requirements, or voice record..."
-                  className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:ring-2 focus:ring-ink"
+                  className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-base sm:text-xs text-ink placeholder:text-ink-disabled focus:outline-none focus:border-border-strong transition-colors"
                 />
               </div>
 
@@ -548,10 +575,10 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               <button
                 type="button"
                 onClick={() => handleSubmit(false)}
-                className="flex-1 h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-ink font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                className="flex-1 h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                <span>Save Lead</span>
-                <span className="text-[10px] text-ink/70 font-normal hidden sm:inline">(Enter)</span>
+                <span className="text-[#14161A]">Save Lead</span>
+                <span className="text-[10px] text-[#14161A]/70 font-normal hidden sm:inline">(Enter)</span>
               </button>
             </div>
           </motion.div>

@@ -47,9 +47,9 @@ export const LeftRail: React.FC<LeftRailProps> = ({ activeFilter, onFilterChange
               whileTap={{ scale: 0.95 }}
               transition={{ type: 'spring', stiffness: 350, damping: 25 }}
               aria-label={item.label}
-              className={`w-10 h-10 rounded-[14px] flex items-center justify-center cursor-pointer transition-colors ${
+              className={`w-10 h-10 rounded-[14px] flex items-center justify-center cursor-pointer transition-colors outline-none focus:outline-none ${
                 isActive
-                  ? 'bg-lime text-ink font-bold shadow-xs'
+                  ? 'bg-lime text-[#14161A] font-bold shadow-xs'
                   : 'text-ink-secondary hover:text-ink hover:bg-surface-subtle'
               }`}
             >
