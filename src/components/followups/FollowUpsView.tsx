@@ -131,26 +131,26 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
         </button>
       </div>
 
-      {/* 7-Day Calendar Strip */}
-      <div className="grid grid-cols-7 gap-2">
+      {/* 7-Day Calendar Strip - Fully Responsive (Smooth scroll on narrow mobile, clean 7-col grid on >= sm) */}
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 sm:pb-0 sm:grid sm:grid-cols-7">
         {next7Days.map((day, idx) => (
           <div
             key={idx}
-            className={`p-3 rounded-2xl border text-center transition-all ${
+            className={`flex-1 min-w-[58px] sm:min-w-0 p-2 sm:p-3 rounded-2xl border text-center transition-all shrink-0 sm:shrink ${
               idx === 0
-                ? 'bg-active-chip/50 border-border-strong shadow-xs'
+                ? 'bg-active-chip/60 border-border-strong shadow-xs'
                 : 'bg-surface border-border-subtle/80'
             }`}
           >
-            <span className="text-[11px] font-semibold text-ink-muted uppercase block">
+            <span className="text-[10px] sm:text-[11px] font-bold text-ink-muted uppercase block truncate tracking-wide">
               {day.label}
             </span>
-            <span className="text-lg font-bold text-ink mt-0.5 block tabular-nums">
+            <span className="text-base sm:text-lg font-bold text-ink mt-0.5 block tabular-nums">
               {day.dayNum}
             </span>
             <div className="mt-1 flex items-center justify-center">
               <span
-                className={`inline-block px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                className={`inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[10px] font-bold ${
                   day.count > 0 ? 'bg-lime text-[#14161A]' : 'text-ink-disabled'
                 }`}
               >
@@ -243,7 +243,7 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
                 {/* Lead Profile */}
                 <div
                   onClick={() => onOpenLead(lead)}
-                  className="flex items-center gap-3.5 cursor-pointer group"
+                  className="flex items-center gap-3 cursor-pointer group min-w-0"
                 >
                   <Avatar
                     name={lead.fullName}
@@ -251,19 +251,19 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
                     avatarColor={lead.avatarColor}
                     size={42}
                   />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-bold text-sm text-ink group-hover:text-ink">{displayName}</h3>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-bold text-sm text-ink group-hover:text-ink truncate">{displayName}</h3>
                       <SourceBadge source={lead.source} />
                     </div>
-                    <p className="text-xs text-ink-muted mt-0.5">{lead.purpose}</p>
+                    <p className="text-xs text-ink-muted mt-0.5 truncate">{lead.purpose}</p>
                   </div>
                 </div>
 
-                {/* Due Time & Quick Action Buttons */}
-                <div className="flex items-center gap-2 justify-end">
+                {/* Due Time & Quick Action Buttons (Responsive toolbar: nicely spaced on mobile, aligned right on desktop) */}
+                <div className="flex flex-wrap items-center gap-2 justify-between sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle/40">
                   <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap shrink-0 ${
                       isOverdue
                         ? 'bg-semantic-overdue/10 text-semantic-overdue-text font-bold'
                         : 'bg-surface-subtle text-ink-secondary'
@@ -272,33 +272,35 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
                     {formatFollowUpDateDisplay(lead.nextFollowUpAt)}
                   </span>
 
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="h-8 px-3 rounded-lg bg-button-dark hover:bg-black text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                  >
-                    <FaWhatsapp size={13} className="text-[#25D366]" />
-                    <span>WhatsApp</span>
-                  </a>
+                  <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="h-8 px-3 rounded-lg bg-button-dark hover:bg-black text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors whitespace-nowrap shrink-0"
+                    >
+                      <FaWhatsapp size={13} className="text-[#25D366]" />
+                      <span>WhatsApp</span>
+                    </a>
 
-                  <button
-                    type="button"
-                    onClick={() => setActiveInlineSchedulerId(showScheduler ? null : lead.id)}
-                    className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover text-[#14161A] text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs"
-                  >
-                    <Check size={14} strokeWidth={2.8} className="text-[#14161A]" />
-                    <span className="text-[#14161A]">Done</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveInlineSchedulerId(showScheduler ? null : lead.id)}
+                      className="h-8 px-3 rounded-lg bg-lime hover:bg-lime-hover text-[#14161A] text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs whitespace-nowrap shrink-0"
+                    >
+                      <Check size={14} strokeWidth={2.8} className="text-[#14161A]" />
+                      <span className="text-[#14161A]">Done</span>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSnooze(lead.id, 1)}
-                    className="h-8 px-2.5 rounded-lg bg-surface-subtle hover:bg-border-subtle text-ink-secondary text-xs font-semibold cursor-pointer transition-colors"
-                    title="Snooze 1 day"
-                  >
-                    +1d
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSnooze(lead.id, 1)}
+                      className="h-8 px-2.5 rounded-lg bg-surface-subtle hover:bg-border-subtle text-ink-secondary text-xs font-semibold cursor-pointer transition-colors whitespace-nowrap shrink-0"
+                      title="Snooze 1 day"
+                    >
+                      +1d
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -311,27 +313,27 @@ export const FollowUpsView: React.FC<FollowUpsViewProps> = ({
 
               {/* Inline Schedule Next Follow-up Picker */}
               {showScheduler && (
-                <div className="p-3 rounded-xl bg-active-chip border border-border-strong flex items-center justify-between text-xs animate-in fade-in">
+                <div className="p-3 rounded-xl bg-active-chip border border-border-strong flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs animate-in fade-in">
                   <span className="font-semibold text-ink">Schedule next follow-up?</span>
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
                       onClick={() => handleMarkDoneInline(lead, 'none')}
-                      className="px-2.5 py-1 rounded-lg bg-surface text-ink hover:bg-surface-subtle font-semibold cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-surface text-ink hover:bg-surface-subtle font-semibold cursor-pointer"
                     >
                       None
                     </button>
                     <button
                       type="button"
                       onClick={() => handleMarkDoneInline(lead, '2d')}
-                      className="px-2.5 py-1 rounded-lg bg-lime text-[#14161A] font-bold cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-lime text-[#14161A] font-bold cursor-pointer"
                     >
                       +2 Days
                     </button>
                     <button
                       type="button"
                       onClick={() => handleMarkDoneInline(lead, '1w')}
-                      className="px-2.5 py-1 rounded-lg bg-surface text-ink hover:bg-surface-subtle font-semibold cursor-pointer"
+                      className="px-2.5 py-1.5 rounded-lg bg-surface text-ink hover:bg-surface-subtle font-semibold cursor-pointer"
                     >
                       +1 Week
                     </button>
