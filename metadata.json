@@ -1,0 +1,6 @@
+{
+  "name": "LeadDesk",
+  "description": "Personal lead-management dashboard for solo creators to capture leads in seconds, track WhatsApp follow-ups, and monitor content attribution.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
