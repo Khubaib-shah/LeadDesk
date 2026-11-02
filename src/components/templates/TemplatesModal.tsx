@@ -9,6 +9,7 @@ import { X, Copy, Check, MessageSquare, Mail, Sparkles } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { LeadTemplate } from '../../types';
 import { SEED_TEMPLATES } from '../../data/seedTemplates';
+import { fetchTemplates } from '../../api/templates';
 import { fillTemplateVariables } from '../../utils/leads';
 import { toast } from 'sonner';
 
@@ -18,10 +19,24 @@ interface TemplatesModalProps {
 }
 
 export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose }) => {
+  const [templates, setTemplates] = useState<LeadTemplate[]>(SEED_TEMPLATES);
   const [selectedTemplate, setSelectedTemplate] = useState<LeadTemplate>(SEED_TEMPLATES[0]);
   const [previewName, setPreviewName] = useState('Alex');
   const [previewPurpose, setPreviewPurpose] = useState('Software project');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      fetchTemplates()
+        .then(data => {
+          if (data && data.length > 0) {
+            setTemplates(data);
+            setSelectedTemplate(data[0]);
+          }
+        })
+        .catch(err => console.error('Failed to load templates:', err));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -67,7 +82,7 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
         <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-12 divide-y md:divide-y-0 md:divide-x divide-border-subtle">
           {/* Templates List */}
           <div className="md:col-span-5 p-4 space-y-2 overflow-y-auto max-h-[500px]">
-            {SEED_TEMPLATES.map(tpl => {
+            {templates.map(tpl => {
               const isSelected = selectedTemplate.id === tpl.id;
               return (
                 <button

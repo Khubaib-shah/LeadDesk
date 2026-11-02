@@ -6,7 +6,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Toaster, toast } from 'sonner';
 import { Lead, ViewTab, RailFilter, AppSettings, InteractionType } from './types';
-import { leadRepository } from './repository/dexieDb';
+import * as leadsApi from './api/leads';
+import * as settingsApi from './api/settings';
 import { calculateDashboardMetrics } from './utils/analytics';
 import { AppShell } from './components/shell/AppShell';
 import { HomeView } from './components/home/HomeView';
@@ -74,12 +75,12 @@ export default function App() {
   // Load leads and settings
   const refreshData = useCallback(async () => {
     try {
-      const all = await leadRepository.getAllLeads();
+      const all = await leadsApi.fetchLeads();
       setLeads(all);
-      const s = await leadRepository.getSettings();
+      const s = await settingsApi.fetchSettings();
       setSettings(s);
     } catch (err) {
-      console.error('Failed to load leads from repository:', err);
+      console.error('Failed to load leads from API:', err);
     }
   }, []);
 
@@ -204,7 +205,7 @@ export default function App() {
 
   // Lead CRUD handlers
   const handleSaveNewLead = async (leadData: Partial<Lead>, andAddAnother = false) => {
-    const saved = await leadRepository.createLead(leadData);
+    const saved = await leadsApi.createLead(leadData);
     await refreshData();
     toast.success(`Lead ${saved.fullName || saved.whatsappNumber} created!`, {
       action: {
@@ -216,7 +217,7 @@ export default function App() {
   };
 
   const handleUpdateLead = async (id: string, updates: Partial<Lead>) => {
-    const updated = await leadRepository.updateLead(id, updates);
+    const updated = await leadsApi.updateLead(id, updates);
     await refreshData();
     if (selectedLead && selectedLead.id === id) {
       setSelectedLead(updated);
@@ -225,7 +226,7 @@ export default function App() {
 
   const handleDeleteLead = async (id: string) => {
     const previous = leads.find(l => l.id === id);
-    await leadRepository.deleteLead(id);
+    await leadsApi.deleteLead(id);
     await refreshData();
     if (selectedLead && selectedLead.id === id) {
       handleCloseLead();
@@ -235,7 +236,7 @@ export default function App() {
         ? {
             label: 'Undo',
             onClick: async () => {
-              await leadRepository.createLead(previous);
+              await leadsApi.createLead(previous);
               await refreshData();
               toast.success('Lead restored');
             },
@@ -249,7 +250,7 @@ export default function App() {
     interaction: { type: InteractionType; text: string; timestamp: string },
     nextDate?: string
   ) => {
-    const updated = await leadRepository.logInteraction(leadId, interaction, nextDate);
+    const updated = await leadsApi.logInteraction(leadId, interaction, nextDate);
     await refreshData();
     if (selectedLead && selectedLead.id === leadId) {
       setSelectedLead(updated);
@@ -257,7 +258,7 @@ export default function App() {
   };
 
   const handleClearDemoData = async () => {
-    await leadRepository.seedInitialData(true);
+    await leadsApi.resetLeadsToMock();
     await refreshData();
     toast.success('Reset leads to clean initial seed data.');
   };
@@ -381,7 +382,7 @@ export default function App() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onSaveSettings={async updates => {
-          const s = await leadRepository.updateSettings(updates);
+          const s = await settingsApi.updateSettings(updates);
           setSettings(s);
         }}
         onClearDemoData={handleClearDemoData}
