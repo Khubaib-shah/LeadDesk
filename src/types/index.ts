@@ -118,7 +118,7 @@ export interface AppSettings {
   cadenceDays: number[]; // e.g. [2, 5, 10]
   goingColdDays: number; // default 7
   theme: 'light' | 'dark';
-  reducedMotion: boolean;
+  reducedMotion?: boolean;
   lastBackupAt?: string;
 }
 
