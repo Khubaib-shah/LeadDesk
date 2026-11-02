@@ -7,21 +7,22 @@
 import { createApp } from '../server/app';
 import { connectDatabase } from '../server/config/db';
 
-let cachedApp: any = null;
+const app = createApp();
 
-async function getHandler() {
-  if (!cachedApp) {
-    try {
-      await connectDatabase();
-    } catch (err) {
-      console.warn('[Vercel Serverless] DB connection fallback:', err);
-    }
-    cachedApp = createApp();
+let dbPromise: Promise<boolean> | null = null;
+function ensureDb() {
+  if (!dbPromise) {
+    dbPromise = connectDatabase()
+      .then(() => true)
+      .catch(err => {
+        console.warn('[Vercel Serverless DB Warning]:', err);
+        return false;
+      });
   }
-  return cachedApp;
+  return dbPromise;
 }
 
 export default async function handler(req: any, res: any) {
-  const app = await getHandler();
+  await ensureDb();
   return app(req, res);
 }

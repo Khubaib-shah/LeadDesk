@@ -81,6 +81,7 @@ export default function App() {
       setSettings(s);
     } catch (err) {
       console.error('Failed to load leads from API:', err);
+      toast.error(`API Error: ${(err as Error).message}`);
     }
   }, []);
 

@@ -18,8 +18,20 @@ export const createApp = () => {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
 
+  // CORS & Preflight handling
+  app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(200);
+      return;
+    }
+    next();
+  });
+
   // Health and Status Endpoint
-  app.get('/api/health', (_req, res) => {
+  app.get(['/api/health', '/health'], (_req, res) => {
     res.json({
       status: 'healthy',
       database: isMongoConnected() ? 'mongodb' : 'mock_memory',
@@ -27,11 +39,11 @@ export const createApp = () => {
     });
   });
 
-  // Feature Modular Routes
-  app.use('/api/leads', leadRoutes);
-  app.use('/api/templates', templateRoutes);
-  app.use('/api/settings', settingsRoutes);
-  app.use('/api/analytics', analyticsRoutes);
+  // Feature Modular Routes (support both /api/* and stripped /* on serverless)
+  app.use(['/api/leads', '/leads'], leadRoutes);
+  app.use(['/api/templates', '/templates'], templateRoutes);
+  app.use(['/api/settings', '/settings'], settingsRoutes);
+  app.use(['/api/analytics', '/analytics'], analyticsRoutes);
 
   // Error Handling
   app.use(errorHandler);
