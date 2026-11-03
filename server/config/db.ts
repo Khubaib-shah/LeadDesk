@@ -6,37 +6,56 @@
 import mongoose from 'mongoose';
 import { MOCK_LEADS, MOCK_TEMPLATES, MOCK_SETTINGS } from '../data/mockData';
 
-let isConnected = false;
+// Global connection cache for serverless warm starts
+declare global {
+  // eslint-disable-next-line no-var
+  var mongooseCache: { conn: typeof mongoose | null; promise: Promise<boolean> | null } | undefined;
+}
+
+const cache = globalThis.mongooseCache || { conn: null, promise: null };
+globalThis.mongooseCache = cache;
 
 export const connectDatabase = async (): Promise<boolean> => {
+  if (mongoose.connection.readyState === 1) {
+    return true;
+  }
+
   const mongoUri = process.env.MONGODB_URI;
 
   if (!mongoUri || mongoUri.trim() === '' || mongoUri.includes('YOUR_MONGODB_URI')) {
     console.log('[Database] No MONGODB_URI provided in environment. Running with unified in-memory mock repository.');
-    isConnected = false;
     return false;
   }
 
-  try {
-    console.log('[Database] Connecting to MongoDB...');
-    await mongoose.connect(mongoUri, {
-      serverSelectionTimeoutMS: 5000,
-      autoIndex: true,
-    });
-    isConnected = true;
-    console.log('[Database] Successfully connected to MongoDB via Mongoose.');
-
-    // Auto-seed if collections are empty
-    await autoSeedDatabase();
-    return true;
-  } catch (error) {
-    console.warn('[Database] MongoDB connection failed. Falling back gracefully to unified mock store:', (error as Error).message);
-    isConnected = false;
-    return false;
+  if (cache.promise) {
+    return cache.promise;
   }
+
+  cache.promise = (async () => {
+    try {
+      console.log('[Database] Connecting to MongoDB...');
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 3000,
+        connectTimeoutMS: 4000,
+        autoIndex: false,
+      });
+      cache.conn = mongoose;
+      console.log('[Database] Successfully connected to MongoDB via Mongoose.');
+
+      // Auto-seed if collections are empty
+      await autoSeedDatabase();
+      return true;
+    } catch (error) {
+      console.warn('[Database] MongoDB connection failed. Falling back gracefully to unified mock store:', (error as Error).message);
+      cache.promise = null;
+      return false;
+    }
+  })();
+
+  return cache.promise;
 };
 
-export const isMongoConnected = (): boolean => isConnected;
+export const isMongoConnected = (): boolean => mongoose.connection.readyState === 1;
 
 // Dynamic import to avoid circular dependencies during initialization
 async function autoSeedDatabase() {
