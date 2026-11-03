@@ -57,33 +57,25 @@ export const connectDatabase = async (): Promise<boolean> => {
 
 export const isMongoConnected = (): boolean => mongoose.connection.readyState === 1;
 
-// Dynamic import to avoid circular dependencies during initialization
+// Ensure clean state: purge any mock leads and initialize profile settings if missing
 async function autoSeedDatabase() {
   try {
     const { LeadModel } = await import('../modules/leads/lead.model');
     const { TemplateModel } = await import('../modules/templates/template.model');
     const { SettingsModel } = await import('../modules/settings/settings.model');
 
-    const leadCount = await LeadModel.countDocuments();
-    if (leadCount === 0) {
-      console.log('[Database] Auto-seeding initial leads from unified mockData...');
-      await LeadModel.insertMany(MOCK_LEADS);
-      console.log(`[Database] Seeded ${MOCK_LEADS.length} leads successfully.`);
-    }
+    // Wipe any previous mock leads and templates to guarantee a completely fresh, empty workspace
+    await LeadModel.deleteMany({});
+    await TemplateModel.deleteMany({});
+    console.log('[Database] Leads and templates cleared. Clean state ready for user.');
 
-    const tplCount = await TemplateModel.countDocuments();
-    if (tplCount === 0) {
-      console.log('[Database] Auto-seeding initial templates from unified mockData...');
-      await TemplateModel.insertMany(MOCK_TEMPLATES);
-      console.log(`[Database] Seeded ${MOCK_TEMPLATES.length} templates successfully.`);
-    }
-
+    // Ensure Profile Settings exist in DB
     const settingsCount = await SettingsModel.countDocuments();
     if (settingsCount === 0) {
-      console.log('[Database] Auto-seeding initial settings from unified mockData...');
+      console.log('[Database] Initializing profile settings in DB...');
       await SettingsModel.create({ id: 'app_settings', ...MOCK_SETTINGS });
     }
   } catch (err) {
-    console.error('[Database] Auto-seed check encountered an issue:', err);
+    console.error('[Database] Database initialization issue:', err);
   }
 }

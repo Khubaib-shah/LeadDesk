@@ -111,7 +111,15 @@ export interface LeadTemplate {
 
 export interface AppSettings {
   userName: string;
+  userRole?: string;
+  userEmail?: string;
+  userPhone?: string;
+  userBio?: string;
   userSignature: string;
+  instagramHandle?: string;
+  tiktokHandle?: string;
+  youtubeHandle?: string;
+  websiteUrl?: string;
   defaultCountryCode: string;
   defaultCurrency: string;
   defaultFollowUpTime: string;

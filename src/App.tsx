@@ -296,6 +296,8 @@ export default function App() {
         dueTodayCount={metrics.followUpsDueCount}
         isDark={isDark}
         onToggleTheme={toggleTheme}
+        userName={settings.userName}
+        userRole={settings.userRole}
         onOpenQuickAdd={() => setIsQuickAddOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenTemplates={() => setIsTemplatesOpen(true)}

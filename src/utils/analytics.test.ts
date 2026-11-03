@@ -1,24 +1,77 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { calculateDashboardMetrics, getContentAttribution } from './analytics';
-import { generateSeedLeads } from '../data/seedLeads';
+import { Lead } from '../types';
 
-test('calculateDashboardMetrics computes non-empty metrics from seed leads', () => {
-  const seeds = generateSeedLeads();
-  const metrics = calculateDashboardMetrics(seeds);
+const sampleLeads: Lead[] = [
+  {
+    id: 'test-1',
+    fullName: 'Jane Doe',
+    whatsappNumber: '+15551234567',
+    source: 'TikTok',
+    sourceDetail: 'TikTok: React architecture',
+    stage: 'Won',
+    temperature: 'Hot',
+    estimatedValue: 4000,
+    wonValue: 4000,
+    currency: 'USD',
+    purpose: 'Software project',
+    summary: 'Looking for a full stack web app',
+    followUpChannel: 'WhatsApp',
+    lastContactedAt: new Date().toISOString(),
+    followUpCount: 2,
+    archived: false,
+    firstContactAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    interactions: [],
+    tags: ['Tech'],
+    avatarColor: 'mint',
+  },
+  {
+    id: 'test-2',
+    fullName: 'John Smith',
+    whatsappNumber: '+15559876543',
+    source: 'WhatsApp',
+    sourceDetail: 'WhatsApp referral',
+    stage: 'Negotiation',
+    temperature: 'Warm',
+    estimatedValue: 2500,
+    currency: 'USD',
+    purpose: 'Consultation or mentoring',
+    summary: 'Wants weekly coaching',
+    followUpChannel: 'WhatsApp',
+    lastContactedAt: new Date().toISOString(),
+    followUpCount: 1,
+    archived: false,
+    firstContactAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    interactions: [],
+    tags: ['Consulting'],
+    avatarColor: 'sky',
+  },
+];
 
+test('calculateDashboardMetrics computes metrics gracefully for empty leads array', () => {
+  const metrics = calculateDashboardMetrics([]);
+  assert.equal(metrics.newLeadsCount, 0);
+  assert.equal(metrics.followUpsDueCount, 0);
+  assert.equal(metrics.wonCount, 0);
+  assert.equal(metrics.totalPipelineValue, 0);
+  assert.equal(metrics.conversionRatePct, 0);
+});
+
+test('calculateDashboardMetrics computes metrics from sample leads', () => {
+  const metrics = calculateDashboardMetrics(sampleLeads);
   assert.ok(metrics.newLeadsCount > 0);
-  assert.ok(metrics.followUpsDueCount >= 0);
-  assert.ok(metrics.conversionRatePct >= 0);
-  assert.ok(metrics.wonCount > 0);
-  assert.ok(metrics.totalPipelineValue > 0);
+  assert.equal(metrics.wonCount, 1);
+  assert.equal(metrics.wonTotalValue, 4000);
+  assert.equal(metrics.totalPipelineValue, 2500);
 });
 
 test('getContentAttribution groups leads by content title', () => {
-  const seeds = generateSeedLeads();
-  const attribution = getContentAttribution(seeds);
-
+  const attribution = getContentAttribution(sampleLeads);
   assert.ok(attribution.length > 0);
-  assert.ok(attribution[0].leadCount >= 1);
-  assert.ok(attribution[0].title.length > 0);
+  assert.equal(attribution[0].leadCount, 1);
 });

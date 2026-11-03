@@ -38,6 +38,8 @@ A high-performance personal lead-management dashboard hand-designed with Apple-l
 
 ## Key Features
 
+- **Personal Profile & Settings**: Full identity profile persisted in MongoDB / database (Full Name, Role/Headline, Email, WhatsApp Phone, Short Bio, Signature, Social handles for Instagram/TikTok/YouTube/Website).
+- **Clean Start**: Starts completely fresh with 0 sample leads so you can capture and organize your own genuine inbounds one by one.
 - **< 10-Second Lead Capture**: Rapid modal with voice dictation (speech-to-text), country code phone parsing (`libphonenumber-js`), and smart duplicate detection.
 - **Follow-up Never Missed**: Overdue and Due Today follow-ups are pinned to the header and top of the queue. Mark done inline and schedule a next cadence (`+2d`, `+1w`) in a single click.
 - **Content & Channel Attribution**: Automatically tracks which TikTok video, Instagram reel, or YouTube tutorial converted into high-ticket paid software deals.

@@ -10,6 +10,8 @@ import { ViewTab } from '../../types';
 
 interface TopRightClusterProps {
   dueTodayCount: number;
+  userName?: string;
+  userRole?: string;
   onNavigateFollowUps: () => void;
   onOpenQuickAdd: () => void;
   onOpenSettings: () => void;
@@ -20,6 +22,8 @@ interface TopRightClusterProps {
 
 export const TopRightCluster: React.FC<TopRightClusterProps> = ({
   dueTodayCount,
+  userName = 'Creator',
+  userRole = 'Software Engineer & Creator',
   onNavigateFollowUps,
   onOpenQuickAdd,
   onOpenSettings,
@@ -86,7 +90,7 @@ export const TopRightCluster: React.FC<TopRightClusterProps> = ({
           className="w-12 h-12 rounded-full bg-surface border border-border-subtle/80 flex items-center justify-center text-ink shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_24px_rgba(20,22,26,0.06)] cursor-pointer hover:border-ink/20 transition-colors"
         >
           <div className="w-8 h-8 rounded-full bg-pastel-butter text-ink flex items-center justify-center font-bold text-xs select-none">
-            Z
+            {userName ? (userName.trim()[0] || 'C').toUpperCase() : 'C'}
           </div>
         </motion.button>
 
@@ -100,8 +104,8 @@ export const TopRightCluster: React.FC<TopRightClusterProps> = ({
               className="absolute right-0 mt-2 w-56 p-1.5 bg-surface border border-border-subtle rounded-2xl shadow-xl z-50 text-ink"
             >
               <div className="px-3 py-2 border-b border-border-subtle mb-1">
-                <p className="text-xs font-bold text-ink">Zubair</p>
-                <p className="text-[11px] text-ink-muted">Software Engineer & Creator</p>
+                <p className="text-xs font-bold text-ink truncate">{userName || 'Creator'}</p>
+                <p className="text-[11px] text-ink-muted truncate">{userRole || 'Lead Management'}</p>
               </div>
 
               <button

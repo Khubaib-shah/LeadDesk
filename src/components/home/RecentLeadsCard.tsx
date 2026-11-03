@@ -57,10 +57,17 @@ export const RecentLeadsCard: React.FC<RecentLeadsCardProps> = ({
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle/40">
-            {displayLeads.map(lead => {
-              const name = getLeadDisplayName(lead);
-              const isOverdue = isFollowUpOverdue(lead.nextFollowUpAt);
-              const waUrl = buildWhatsAppUrl(lead.whatsappNumber);
+            {displayLeads.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="py-8 text-center text-xs text-ink-muted">
+                  No leads captured yet. Click <span className="font-bold text-ink">+</span> or press <kbd className="px-1.5 py-0.5 rounded bg-surface-subtle font-mono text-[10px]">N</kbd> to add your first lead!
+                </td>
+              </tr>
+            ) : (
+              displayLeads.map(lead => {
+                const name = getLeadDisplayName(lead);
+                const isOverdue = isFollowUpOverdue(lead.nextFollowUpAt);
+                const waUrl = buildWhatsAppUrl(lead.whatsappNumber);
 
               return (
                 <tr
@@ -130,8 +137,9 @@ export const RecentLeadsCard: React.FC<RecentLeadsCardProps> = ({
                   </td>
                 </tr>
               );
-            })}
-          </tbody>
+            })
+          )}
+        </tbody>
         </table>
       </div>
     </div>

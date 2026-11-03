@@ -538,9 +538,23 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           </div>
 
           {filteredLeads.length === 0 && (
-            <div className="py-16 text-center text-ink-muted">
-              <p className="text-sm font-semibold">No leads found</p>
-              <p className="text-xs mt-1">Try clearing filters or search query.</p>
+            <div className="py-16 text-center text-ink-muted flex flex-col items-center justify-center">
+              <p className="text-sm font-semibold text-ink">No leads found</p>
+              <p className="text-xs mt-1 max-w-sm text-ink-muted">
+                {leads.length === 0
+                  ? 'Your workspace is completely fresh. Click below or press "N" on your keyboard to add your first lead.'
+                  : 'No leads match your current filter or search criteria.'}
+              </p>
+              {leads.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onOpenQuickAdd}
+                  className="mt-4 h-9 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                >
+                  <Plus size={14} strokeWidth={2.5} className="text-[#14161A]" />
+                  <span className="text-[#14161A]">Add First Lead</span>
+                </button>
+              )}
             </div>
           )}
         </div>

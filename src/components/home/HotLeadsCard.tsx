@@ -36,7 +36,10 @@ export const HotLeadsCard: React.FC<HotLeadsCardProps> = ({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          {displayLeads.map(lead => {
+          {displayLeads.length === 0 ? (
+            <p className="text-xs text-ink-muted py-4 text-center">No hot leads right now.</p>
+          ) : (
+            displayLeads.map(lead => {
             const name = getLeadDisplayName(lead);
             return (
               <button
@@ -65,7 +68,8 @@ export const HotLeadsCard: React.FC<HotLeadsCardProps> = ({
                 <ChevronRight size={15} className="text-ink-disabled group-hover:text-ink shrink-0 ml-1" />
               </button>
             );
-          })}
+          })
+        )}
         </div>
       </div>
 

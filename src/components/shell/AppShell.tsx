@@ -22,6 +22,8 @@ interface AppShellProps {
   dueTodayCount: number;
   isDark: boolean;
   onToggleTheme: () => void;
+  userName?: string;
+  userRole?: string;
   onOpenQuickAdd: () => void;
   onOpenSettings: () => void;
   onOpenTemplates: () => void;
@@ -38,6 +40,8 @@ export const AppShell: React.FC<AppShellProps> = ({
   dueTodayCount,
   isDark,
   onToggleTheme,
+  userName,
+  userRole,
   onOpenQuickAdd,
   onOpenSettings,
   onOpenTemplates,
@@ -57,6 +61,8 @@ export const AppShell: React.FC<AppShellProps> = ({
 
       <TopRightCluster
         dueTodayCount={dueTodayCount}
+        userName={userName}
+        userRole={userRole}
         onNavigateFollowUps={() => onTabChange('FOLLOW-UPS')}
         onOpenQuickAdd={onOpenQuickAdd}
         onOpenSettings={onOpenSettings}

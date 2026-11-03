@@ -15,8 +15,16 @@ export interface SettingsDocument extends Document, AppSettings {
 export const settingsMongooseSchema = new Schema<SettingsDocument>(
   {
     id: { type: String, default: 'app_settings', unique: true },
-    userName: { type: String, default: 'Zubair' },
-    userSignature: { type: String, default: 'Best regards,\nZubair' },
+    userName: { type: String, default: 'Creator' },
+    userRole: { type: String, default: 'Software Engineer & Creator' },
+    userEmail: { type: String, default: '' },
+    userPhone: { type: String, default: '' },
+    userBio: { type: String, default: 'Building and shipping projects.' },
+    userSignature: { type: String, default: 'Best regards,\nCreator' },
+    instagramHandle: { type: String, default: '' },
+    tiktokHandle: { type: String, default: '' },
+    youtubeHandle: { type: String, default: '' },
+    websiteUrl: { type: String, default: '' },
     defaultCountryCode: { type: String, default: 'US' },
     defaultCurrency: { type: String, default: 'USD' },
     defaultFollowUpTime: { type: String, default: '10:00' },
@@ -49,15 +57,23 @@ export class SettingsRepository {
       const doc = await SettingsModel.findOne({ id: 'app_settings' }).lean();
       if (doc) {
         return {
-          userName: doc.userName,
-          userSignature: doc.userSignature,
-          defaultCountryCode: doc.defaultCountryCode,
-          defaultCurrency: doc.defaultCurrency,
-          defaultFollowUpTime: doc.defaultFollowUpTime,
-          cadenceDays: doc.cadenceDays,
-          goingColdDays: doc.goingColdDays,
-          theme: doc.theme,
-          reducedMotion: doc.reducedMotion,
+          userName: doc.userName || 'Creator',
+          userRole: doc.userRole || '',
+          userEmail: doc.userEmail || '',
+          userPhone: doc.userPhone || '',
+          userBio: doc.userBio || '',
+          userSignature: doc.userSignature || '',
+          instagramHandle: doc.instagramHandle || '',
+          tiktokHandle: doc.tiktokHandle || '',
+          youtubeHandle: doc.youtubeHandle || '',
+          websiteUrl: doc.websiteUrl || '',
+          defaultCountryCode: doc.defaultCountryCode || 'US',
+          defaultCurrency: doc.defaultCurrency || 'USD',
+          defaultFollowUpTime: doc.defaultFollowUpTime || '10:00',
+          cadenceDays: doc.cadenceDays || [2, 5, 10],
+          goingColdDays: doc.goingColdDays || 7,
+          theme: doc.theme || 'light',
+          reducedMotion: doc.reducedMotion || false,
         };
       }
     }
@@ -72,15 +88,23 @@ export class SettingsRepository {
         { new: true, upsert: true }
       ).lean();
       return {
-        userName: updated.userName,
-        userSignature: updated.userSignature,
-        defaultCountryCode: updated.defaultCountryCode,
-        defaultCurrency: updated.defaultCurrency,
-        defaultFollowUpTime: updated.defaultFollowUpTime,
-        cadenceDays: updated.cadenceDays,
-        goingColdDays: updated.goingColdDays,
-        theme: updated.theme,
-        reducedMotion: updated.reducedMotion,
+        userName: updated.userName || 'Creator',
+        userRole: updated.userRole || '',
+        userEmail: updated.userEmail || '',
+        userPhone: updated.userPhone || '',
+        userBio: updated.userBio || '',
+        userSignature: updated.userSignature || '',
+        instagramHandle: updated.instagramHandle || '',
+        tiktokHandle: updated.tiktokHandle || '',
+        youtubeHandle: updated.youtubeHandle || '',
+        websiteUrl: updated.websiteUrl || '',
+        defaultCountryCode: updated.defaultCountryCode || 'US',
+        defaultCurrency: updated.defaultCurrency || 'USD',
+        defaultFollowUpTime: updated.defaultFollowUpTime || '10:00',
+        cadenceDays: updated.cadenceDays || [2, 5, 10],
+        goingColdDays: updated.goingColdDays || 7,
+        theme: updated.theme || 'light',
+        reducedMotion: updated.reducedMotion || false,
       };
     }
     inMemorySettings = { ...inMemorySettings, ...updates };

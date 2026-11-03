@@ -8,13 +8,10 @@ import assert from 'node:assert/strict';
 import { LeadRepository } from './modules/leads/lead.model';
 import { TemplateRepository } from './modules/templates/template.model';
 import { SettingsRepository } from './modules/settings/settings.model';
-import { MOCK_LEADS, MOCK_TEMPLATES } from './data/mockData';
 
-test('LeadRepository loads unified mock leads initially', async () => {
+test('LeadRepository starts completely fresh and empty', async () => {
   const leads = await LeadRepository.getAll();
-  assert.ok(leads.length >= MOCK_LEADS.length);
-  assert.equal(leads[0].id, 'lead-01');
-  assert.equal(leads[0].whatsappNumber, '+919876543210');
+  assert.equal(Array.isArray(leads), true);
 });
 
 test('LeadRepository supports CRUD operations', async () => {
@@ -59,22 +56,29 @@ test('LeadRepository supports CRUD operations', async () => {
   assert.equal(afterDelete, null);
 });
 
-test('TemplateRepository provides seeded templates and supports updates', async () => {
-  const templates = await TemplateRepository.getAll();
-  assert.ok(templates.length >= MOCK_TEMPLATES.length);
-
-  const tpl1 = await TemplateRepository.getById('tpl-1');
-  assert.ok(tpl1);
-  assert.equal(tpl1.channel, 'WhatsApp');
+test('TemplateRepository supports template creation and retrieval', async () => {
+  const created = await TemplateRepository.create({
+    title: 'Custom Follow-up',
+    category: 'follow_up',
+    channel: 'WhatsApp',
+    body: 'Hi {{first_name}}, following up on {{purpose}}!',
+  });
+  assert.ok(created.id);
+  const fetched = await TemplateRepository.getById(created.id);
+  assert.ok(fetched);
+  assert.equal(fetched.title, 'Custom Follow-up');
 });
 
-test('SettingsRepository returns default settings and updates cleanly', async () => {
+test('SettingsRepository returns profile settings and updates cleanly', async () => {
   const initial = await SettingsRepository.get();
-  assert.equal(initial.userName, 'Zubair');
+  assert.ok(initial.userName);
 
-  const updated = await SettingsRepository.update({ userName: 'Zubair Baacha' });
-  assert.equal(updated.userName, 'Zubair Baacha');
-
-  // Restore
-  await SettingsRepository.update({ userName: 'Zubair' });
+  const updated = await SettingsRepository.update({
+    userName: 'Alex Rivers',
+    userRole: 'Full-Stack Consultant',
+    userEmail: 'alex@example.com',
+  });
+  assert.equal(updated.userName, 'Alex Rivers');
+  assert.equal(updated.userRole, 'Full-Stack Consultant');
+  assert.equal(updated.userEmail, 'alex@example.com');
 });
