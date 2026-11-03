@@ -49,16 +49,6 @@ const NAV_ITEMS: Array<{ id: ViewTab; label: string }> = [
   { id: 'ANALYTICS', label: 'ANALYTICS' },
 ];
 
-const QUICK_FILTERS: Array<{ id: RailFilter; label: string; icon: React.ReactNode }> = [
-  { id: 'ALL', label: 'All Leads', icon: <Users size={14} /> },
-  { id: 'DUE_TODAY', label: 'Due Today', icon: <Clock size={14} /> },
-  { id: 'HOT', label: 'Hot Leads', icon: <Flame size={14} /> },
-  { id: 'WHATSAPP', label: 'WhatsApp', icon: <FaWhatsapp size={14} /> },
-  { id: 'INSTAGRAM', label: 'Instagram', icon: <FaInstagram size={14} /> },
-  { id: 'TIKTOK', label: 'TikTok', icon: <FaTiktok size={13} /> },
-  { id: 'WON', label: 'Won Deals', icon: <Trophy size={14} /> },
-];
-
 export const MobileNav: React.FC<MobileNavProps> = ({
   activeTab,
   onTabChange,
@@ -90,14 +80,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
 
   const handleNavClick = (tab: ViewTab) => {
     onTabChange(tab);
-    setIsDrawerOpen(false);
-  };
-
-  const handleFilterSelect = (filter: RailFilter) => {
-    onFilterChange(filter);
-    if (activeTab !== 'LEADS' && activeTab !== 'HOME') {
-      onTabChange('LEADS');
-    }
     setIsDrawerOpen(false);
   };
 
@@ -309,33 +291,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     <span>TEMPLATES</span>
                   </button>
                 </nav>
-
-                {/* Quick Lead Filters Section */}
-                <div className="mt-8 pt-6 border-t border-border-subtle/80">
-                  <p className="text-[11px] font-bold tracking-wider uppercase text-ink-muted mb-3 px-1">
-                    Quick Filters
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {QUICK_FILTERS.map(f => {
-                      const isFilterActive = activeFilter === f.id;
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => handleFilterSelect(isFilterActive && f.id !== 'ALL' ? 'ALL' : f.id)}
-                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors cursor-pointer ${
-                            isFilterActive
-                              ? 'bg-lime text-[#14161A] font-bold shadow-xs'
-                              : 'bg-surface-subtle text-ink-secondary hover:text-ink border border-border-subtle/60'
-                          }`}
-                        >
-                          {f.icon}
-                          <span>{f.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               </div>
 
               {/* Bottom Section: 3 Pill Buttons matching image_657d0ac3.png */}

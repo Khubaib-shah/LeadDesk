@@ -110,28 +110,27 @@ export function calculateDashboardMetrics(leads: Lead[]): DashboardMetrics {
 
 export function getWeeklyChartData(leads: Lead[], rangeDays: 7 | 30 | 90 = 7): DayActivityData[] {
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = new Date();
+  const now = new Date();
 
   if (rangeDays === 7) {
-    // Return Sun - Sat or last 7 days
     const result: DayActivityData[] = [];
     for (let i = 6; i >= 0; i--) {
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() - i);
+      const targetDate = new Date(now);
+      targetDate.setDate(now.getDate() - i);
       const dayLabel = daysOfWeek[targetDate.getDay()];
-      const dateStart = new Date(targetDate.setHours(0, 0, 0, 0)).getTime();
-      const dateEnd = new Date(targetDate.setHours(23, 59, 59, 999)).getTime();
+      const startMs = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0).getTime();
+      const endMs = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999).getTime();
 
       const newLeads = leads.filter(l => {
         const t = new Date(l.createdAt).getTime();
-        return t >= dateStart && t <= dateEnd;
+        return t >= startMs && t <= endMs;
       }).length;
 
       let followUpsDone = 0;
       leads.forEach(l => {
         (l.interactions || []).forEach(int => {
           const t = new Date(int.timestamp).getTime();
-          if (t >= dateStart && t <= dateEnd) {
+          if (t >= startMs && t <= endMs) {
             followUpsDone++;
           }
         });
@@ -139,20 +138,129 @@ export function getWeeklyChartData(leads: Lead[], rangeDays: 7 | 30 | 90 = 7): D
 
       result.push({
         day: dayLabel,
-        newLeads: newLeads || (i % 2 === 0 ? 3 : 1), // sensible baseline for display
-        followUpsDone: followUpsDone || (i % 3 === 0 ? 4 : 2),
+        newLeads,
+        followUpsDone,
       });
     }
     return result;
   }
 
-  // 30 or 90 days aggregated in 4-6 buckets
-  return [
-    { day: 'W1', newLeads: 12, followUpsDone: 18 },
-    { day: 'W2', newLeads: 19, followUpsDone: 24 },
-    { day: 'W3', newLeads: 15, followUpsDone: 22 },
-    { day: 'W4', newLeads: 23, followUpsDone: 31 },
-  ];
+  if (rangeDays === 30) {
+    // 5 buckets of 6 days each
+    const result: DayActivityData[] = [];
+    for (let i = 4; i >= 0; i--) {
+      const bucketEndDaysAgo = i * 6;
+      const bucketStartDaysAgo = (i + 1) * 6;
+      const startDate = new Date(now.getTime() - bucketStartDaysAgo * 86400000);
+      const endDate = new Date(now.getTime() - bucketEndDaysAgo * 86400000);
+      const startMs = startDate.getTime();
+      const endMs = endDate.getTime();
+
+      const label = i === 0 ? 'This Wk' : `Wk -${i}`;
+      const newLeads = leads.filter(l => {
+        const t = new Date(l.createdAt).getTime();
+        return t >= startMs && t < endMs;
+      }).length;
+
+      let followUpsDone = 0;
+      leads.forEach(l => {
+        (l.interactions || []).forEach(int => {
+          const t = new Date(int.timestamp).getTime();
+          if (t >= startMs && t < endMs) {
+            followUpsDone++;
+          }
+        });
+      });
+
+      result.push({ day: label, newLeads, followUpsDone });
+    }
+    return result;
+  }
+
+  // 90 days: 3 monthly buckets
+  const result: DayActivityData[] = [];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  for (let i = 2; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const startMs = new Date(d.getFullYear(), d.getMonth(), 1).getTime();
+    const endMs = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+
+    const label = monthNames[d.getMonth()];
+    const newLeads = leads.filter(l => {
+      const t = new Date(l.createdAt).getTime();
+      return t >= startMs && t <= endMs;
+    }).length;
+
+    let followUpsDone = 0;
+    leads.forEach(l => {
+      (l.interactions || []).forEach(int => {
+        const t = new Date(int.timestamp).getTime();
+        if (t >= startMs && t <= endMs) {
+          followUpsDone++;
+        }
+      });
+    });
+
+    result.push({ day: label, newLeads, followUpsDone });
+  }
+  return result;
+}
+
+export function getFollowUpDiscipline(leads: Lead[]): { percentage: number; label: string; subtext: string } {
+  const activeLeads = leads.filter(l => !l.archived && l.stage !== 'Won' && l.stage !== 'Lost');
+  const leadsWithFollowUp = activeLeads.filter(l => l.nextFollowUpAt);
+
+  if (leadsWithFollowUp.length === 0) {
+    return {
+      percentage: 100,
+      label: '100% On-Time',
+      subtext: 'No pending follow-ups overdue',
+    };
+  }
+
+  let overdueCount = 0;
+  leadsWithFollowUp.forEach(l => {
+    if (isFollowUpOverdue(l.nextFollowUpAt)) {
+      overdueCount++;
+    }
+  });
+
+  const onTimeCount = leadsWithFollowUp.length - overdueCount;
+  const percentage = Math.max(0, Math.min(100, Math.round((onTimeCount / leadsWithFollowUp.length) * 100)));
+
+  return {
+    percentage,
+    label: `${percentage}% On-Time`,
+    subtext: overdueCount === 0
+      ? 'All scheduled follow-ups on track'
+      : `${overdueCount} overdue · ${onTimeCount} on track`,
+  };
+}
+
+export function getTopAcquisitionChannel(leads: Lead[]): { channel: string; subtext: string } {
+  const activeLeads = leads.filter(l => !l.archived);
+  if (activeLeads.length === 0) {
+    return {
+      channel: 'No leads yet',
+      subtext: 'Add your first lead to see channel breakdown',
+    };
+  }
+
+  const breakdown = getSourceBreakdown(leads);
+  if (breakdown.length === 0) {
+    return {
+      channel: 'Direct / Other',
+      subtext: 'No channels recorded yet',
+    };
+  }
+
+  const top = [...breakdown].sort((a, b) => b.count - a.count)[0];
+  const pct = Math.round((top.count / activeLeads.length) * 100);
+
+  return {
+    channel: `${top.source} (${pct}%)`,
+    subtext: `${top.count} of ${activeLeads.length} total inbound leads`,
+  };
 }
 
 export function getContentAttribution(leads: Lead[]): ContentAttributionItem[] {

@@ -38,7 +38,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onDoneFollowUp,
 }) => {
   const metrics = calculateDashboardMetrics(leads);
-  const chartData = getWeeklyChartData(leads, 7);
 
   // Next up lead: either due today or earliest overdue
   const nextUpLead = leads.find(
@@ -154,7 +153,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           {/* Row 2: Bar Chart + More Insights */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-7">
-              <BarChartCard data={chartData} onExportCsv={handleExportCsv} />
+              <BarChartCard leads={leads} onExportCsv={handleExportCsv} />
             </div>
             <div className="md:col-span-5">
               <MoreInsightsCard

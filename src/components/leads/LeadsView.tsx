@@ -31,6 +31,7 @@ import { Lead, LeadSource, LeadStage, LeadTemperature, RailFilter } from '../../
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
 import { CustomSelect } from '../common/Select';
+import { QuickFilterChips } from '../common/QuickFilterChips';
 import {
   getLeadDisplayName,
   formatFollowUpDateDisplay,
@@ -46,6 +47,7 @@ interface LeadsViewProps {
   leads: Lead[];
   railFilter: RailFilter;
   onClearRailFilter: () => void;
+  onFilterChange?: (filter: RailFilter) => void;
   onOpenQuickAdd: () => void;
   onOpenLead: (lead: Lead) => void;
   onUpdateLead: (id: string, updates: Partial<Lead>) => Promise<void>;
@@ -58,6 +60,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   leads,
   railFilter,
   onClearRailFilter,
+  onFilterChange,
   onOpenQuickAdd,
   onOpenLead,
   onUpdateLead,
@@ -240,6 +243,29 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         </div>
       </div>
 
+      {/* Small Screen Quick Filters (Replaces sidebar filters on mobile & tablet) */}
+      {onFilterChange && (
+        <div className="xl:hidden w-full space-y-1.5 p-3 rounded-2xl bg-surface border border-border-subtle/80 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Quick Filters</span>
+            {railFilter !== 'ALL' && (
+              <button
+                type="button"
+                onClick={onClearRailFilter}
+                className="text-[11px] font-bold text-ink hover:underline cursor-pointer"
+              >
+                Reset ({railFilter})
+              </button>
+            )}
+          </div>
+          <QuickFilterChips
+            leads={leads}
+            activeFilter={railFilter}
+            onFilterChange={onFilterChange}
+          />
+        </div>
+      )}
+
       {/* Saved Preset Filters (Non-scrolling: Native dropdown on mobile, wrapped pills on tablet/desktop) */}
       <div className="w-full">
         {/* Mobile (< sm): Clean Compact Dropdown (No scrolling, no truncated pills) */}
@@ -402,10 +428,10 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       {viewMode === 'table' ? (
         <div className="rounded-[20px] bg-surface border border-border-subtle/80 overflow-hidden shadow-xs">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="min-w-[860px] w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border-subtle text-[12px] font-medium text-ink-muted bg-surface-subtle/40">
-                  <th className="py-3 px-4 w-10">
+                  <th className="py-3 px-4 w-10 whitespace-nowrap">
                     <input
                       type="checkbox"
                       checked={selectedLeadIds.length === filteredLeads.length && filteredLeads.length > 0}
@@ -413,15 +439,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                       className="rounded border-border-subtle cursor-pointer"
                     />
                   </th>
-                  <th className="py-3 px-3 font-medium">Lead</th>
-                  <th className="py-3 px-3 font-medium">WhatsApp</th>
-                  <th className="py-3 px-3 font-medium">Source</th>
-                  <th className="py-3 px-3 font-medium">Purpose</th>
-                  <th className="py-3 px-3 font-medium">Stage</th>
-                  <th className="py-3 px-3 font-medium">Temp</th>
-                  <th className="py-3 px-3 font-medium">Next Follow-up</th>
-                  <th className="py-3 px-3 font-medium text-right">Value</th>
-                  <th className="py-3 px-4 font-medium text-right">Quick Contact</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Lead</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">WhatsApp</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Source</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Purpose</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Stage</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Temp</th>
+                  <th className="py-3 px-3 font-medium whitespace-nowrap">Next Follow-up</th>
+                  <th className="py-3 px-3 font-medium text-right whitespace-nowrap">Value</th>
+                  <th className="py-3 px-4 font-medium text-right whitespace-nowrap">Quick Contact</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border-subtle/50 text-xs">

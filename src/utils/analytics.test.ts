@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { calculateDashboardMetrics, getContentAttribution } from './analytics';
+import {
+  calculateDashboardMetrics,
+  getContentAttribution,
+  getWeeklyChartData,
+  getFollowUpDiscipline,
+  getTopAcquisitionChannel,
+  DayActivityData,
+} from './analytics';
 import { Lead } from '../types';
 
 const sampleLeads: Lead[] = [
@@ -74,4 +81,21 @@ test('getContentAttribution groups leads by content title', () => {
   const attribution = getContentAttribution(sampleLeads);
   assert.ok(attribution.length > 0);
   assert.equal(attribution[0].leadCount, 1);
+});
+
+test('getWeeklyChartData returns real zeroes for empty leads', () => {
+  const chartData = getWeeklyChartData([], 7);
+  assert.equal(chartData.length, 7);
+  chartData.forEach((day: DayActivityData) => {
+    assert.equal(day.newLeads, 0);
+    assert.equal(day.followUpsDone, 0);
+  });
+});
+
+test('getFollowUpDiscipline and getTopAcquisitionChannel return dynamic values', () => {
+  const emptyDiscipline = getFollowUpDiscipline([]);
+  assert.equal(emptyDiscipline.percentage, 100);
+
+  const topChannel = getTopAcquisitionChannel(sampleLeads);
+  assert.ok(topChannel.channel.includes('TikTok') || topChannel.channel.includes('WhatsApp'));
 });

@@ -333,6 +333,7 @@ export default function App() {
             leads={leads}
             railFilter={activeFilter}
             onClearRailFilter={() => setActiveFilter('ALL')}
+            onFilterChange={setActiveFilter}
             onOpenQuickAdd={() => setIsQuickAddOpen(true)}
             onOpenLead={handleOpenLead}
             onUpdateLead={handleUpdateLead}

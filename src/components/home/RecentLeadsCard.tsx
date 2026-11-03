@@ -36,24 +36,24 @@ export const RecentLeadsCard: React.FC<RecentLeadsCardProps> = ({
         <button
           type="button"
           onClick={onViewAll}
-          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
         >
-          <span className="text-[#14161A]">View all</span>
-          <ArrowRight size={13} strokeWidth={2.5} className="text-[#14161A]" />
+          <span className="text-[#14161A] whitespace-nowrap">View all</span>
+          <ArrowRight size={13} strokeWidth={2.5} className="text-[#14161A] shrink-0" />
         </button>
       </div>
 
       {/* Table Container */}
       <div className="overflow-x-auto -mx-6 px-6">
-        <table className="w-full text-left border-collapse">
+        <table className="min-w-[560px] w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-border-subtle text-[12px] font-medium text-ink-muted pb-2">
-              <th className="py-2.5 font-medium">Lead</th>
-              <th className="py-2.5 font-medium">Source</th>
-              <th className="py-2.5 font-medium hidden md:table-cell">Purpose</th>
-              <th className="py-2.5 font-medium">Next Follow-up</th>
-              <th className="py-2.5 font-medium text-right">Stage</th>
-              <th className="py-2.5 font-medium text-right pr-2">Actions</th>
+              <th className="py-2.5 font-medium whitespace-nowrap">Lead</th>
+              <th className="py-2.5 font-medium whitespace-nowrap">Source</th>
+              <th className="py-2.5 font-medium hidden md:table-cell whitespace-nowrap">Purpose</th>
+              <th className="py-2.5 font-medium whitespace-nowrap">Next Follow-up</th>
+              <th className="py-2.5 font-medium text-right whitespace-nowrap">Stage</th>
+              <th className="py-2.5 font-medium text-right pr-2 whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border-subtle/40">

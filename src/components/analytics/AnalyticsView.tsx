@@ -5,9 +5,14 @@
 
 import React from 'react';
 import { Lead } from '../../types';
-import { getContentAttribution, getSourceBreakdown } from '../../utils/analytics';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
-import { Video, Share2, Award, AlertTriangle, TrendingUp } from 'lucide-react';
+import {
+  getContentAttribution,
+  getSourceBreakdown,
+  getFollowUpDiscipline,
+  getTopAcquisitionChannel,
+} from '../../utils/analytics';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { Video } from 'lucide-react';
 import { PASTEL_COLORS } from '../../utils/leads';
 
 interface AnalyticsViewProps {
@@ -17,6 +22,8 @@ interface AnalyticsViewProps {
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
   const attributionList = getContentAttribution(leads);
   const sourceBreakdown = getSourceBreakdown(leads);
+  const discipline = getFollowUpDiscipline(leads);
+  const topAcquisition = getTopAcquisitionChannel(leads);
 
   const wonLeads = leads.filter(l => l.stage === 'Won');
   const wonRevenue = wonLeads.reduce((acc, curr) => acc + (curr.wonValue || curr.estimatedValue || 0), 0);
@@ -38,7 +45,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
         </p>
       </div>
 
-      {/* Top 3 Metric Cards */}
+      {/* Top 3 Metric Cards: 100% Dynamic */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="p-5 rounded-[20px] bg-pastel-butter text-ink shadow-xs">
           <span className="text-xs font-semibold text-ink/70">Total Revenue Won</span>
@@ -46,28 +53,36 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
           <span className="text-[11px] text-ink/70 mt-1 block">From {wonLeads.length} closed deals</span>
         </div>
 
-        <div className="p-5 rounded-[20px] bg-pastel-mint text-ink shadow-xs">
+        <div className="p-5 rounded-[20px] bg-pastel-mint text-ink shadow-xs overflow-hidden">
           <span className="text-xs font-semibold text-ink/70">Top Acquisition Channel</span>
-          <p className="text-2xl font-bold text-ink mt-1">WhatsApp & TikTok</p>
-          <span className="text-[11px] text-ink/70 mt-1 block">68% of all inbound qualified leads</span>
+          <p className="text-2xl font-bold text-ink mt-1 truncate" title={topAcquisition.channel}>
+            {topAcquisition.channel}
+          </p>
+          <span className="text-[11px] text-ink/70 mt-1 block truncate">
+            {topAcquisition.subtext}
+          </span>
         </div>
 
-        <div className="p-5 rounded-[20px] bg-pastel-lavender text-ink shadow-xs">
+        <div className="p-5 rounded-[20px] bg-pastel-lavender text-ink shadow-xs overflow-hidden">
           <span className="text-xs font-semibold text-ink/70">Follow-up Discipline</span>
-          <p className="text-2xl font-bold text-ink mt-1">94% On-Time</p>
-          <span className="text-[11px] text-ink/70 mt-1 block">Average response within 4 hours</span>
+          <p className="text-2xl font-bold text-ink mt-1">{discipline.label}</p>
+          <span className="text-[11px] text-ink/70 mt-1 block truncate">
+            {discipline.subtext}
+          </span>
         </div>
       </div>
 
-      {/* Content Attribution Table (The core feature for creator software engineers) */}
-      <div className="rounded-[20px] p-6 bg-surface border border-border-subtle/80 shadow-xs space-y-4">
+      {/* Content Attribution Table (Responsive with min-width and horizontal scroll) */}
+      <div className="rounded-[20px] p-5 sm:p-6 bg-surface border border-border-subtle/80 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-lime flex items-center justify-center text-[#14161A] font-bold">
                 <Video size={15} className="text-[#14161A]" />
               </div>
-              <h2 className="text-base font-bold text-ink tracking-tight">Content Attribution Leaderboard</h2>
+              <h2 className="text-base font-bold text-ink tracking-tight whitespace-nowrap">
+                Content Attribution Leaderboard
+              </h2>
             </div>
             <p className="text-xs text-ink-muted mt-1">
               Exact post or video URL where incoming leads discovered your services
@@ -75,35 +90,43 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
+          <table className="min-w-[620px] w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-border-subtle text-ink-muted pb-2">
-                <th className="py-2.5 font-medium">Content Asset / Topic</th>
-                <th className="py-2.5 font-medium">Platform</th>
-                <th className="py-2.5 font-medium text-center">Leads Generated</th>
-                <th className="py-2.5 font-medium text-center">Deals Won</th>
-                <th className="py-2.5 font-medium text-right">Revenue Generated</th>
+                <th className="py-2.5 font-medium whitespace-nowrap">Content Asset / Topic</th>
+                <th className="py-2.5 font-medium whitespace-nowrap">Platform</th>
+                <th className="py-2.5 font-medium text-center whitespace-nowrap">Leads Generated</th>
+                <th className="py-2.5 font-medium text-center whitespace-nowrap">Deals Won</th>
+                <th className="py-2.5 font-medium text-right whitespace-nowrap">Revenue Generated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle/50">
-              {attributionList.map((item, idx) => (
-                <tr key={idx} className="h-12 hover:bg-surface-subtle transition-colors">
-                  <td className="py-2 pr-3 font-semibold text-ink max-w-[280px] truncate">
-                    {item.title}
-                  </td>
-                  <td className="py-2 pr-3 text-ink-secondary">{item.source}</td>
-                  <td className="py-2 pr-3 text-center font-bold text-ink tabular-nums">
-                    {item.leadCount}
-                  </td>
-                  <td className="py-2 pr-3 text-center font-bold text-semantic-success tabular-nums">
-                    {item.wonCount}
-                  </td>
-                  <td className="py-2 text-right font-bold text-ink tabular-nums">
-                    ${item.totalValue.toLocaleString()}
+              {attributionList.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-8 text-center text-xs text-ink-muted">
+                    No content attribution yet. Add leads with their post/video topic to see ROI here.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                attributionList.map((item, idx) => (
+                  <tr key={idx} className="h-12 hover:bg-surface-subtle transition-colors">
+                    <td className="py-2 pr-3 font-semibold text-ink max-w-[280px] truncate whitespace-nowrap">
+                      {item.title}
+                    </td>
+                    <td className="py-2 pr-3 text-ink-secondary whitespace-nowrap">{item.source}</td>
+                    <td className="py-2 pr-3 text-center font-bold text-ink tabular-nums whitespace-nowrap">
+                      {item.leadCount}
+                    </td>
+                    <td className="py-2 pr-3 text-center font-bold text-semantic-success tabular-nums whitespace-nowrap">
+                      {item.wonCount}
+                    </td>
+                    <td className="py-2 text-right font-bold text-ink tabular-nums whitespace-nowrap">
+                      ${item.totalValue.toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

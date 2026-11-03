@@ -13,35 +13,40 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { DayActivityData } from '../../utils/analytics';
+import { DayActivityData, getWeeklyChartData } from '../../utils/analytics';
+import { Lead } from '../../types';
 import { Download } from 'lucide-react';
 
 interface BarChartCardProps {
-  data: DayActivityData[];
+  leads: Lead[];
   onExportCsv: () => void;
 }
 
-export const BarChartCard: React.FC<BarChartCardProps> = ({ data, onExportCsv }) => {
+export const BarChartCard: React.FC<BarChartCardProps> = ({ leads, onExportCsv }) => {
   const [range, setRange] = useState<'7D' | '30D' | '90D'>('7D');
+  const rangeDays = range === '7D' ? 7 : range === '30D' ? 30 : 90;
+  const chartData = React.useMemo(() => getWeeklyChartData(leads, rangeDays), [leads, rangeDays]);
 
   return (
-    <div className="rounded-[20px] p-6 bg-surface border border-border-subtle/80 flex flex-col justify-between shadow-xs">
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-4">
+    <div className="rounded-[20px] p-5 sm:p-6 bg-surface border border-border-subtle/80 flex flex-col justify-between shadow-xs">
+      {/* Header row: responsive wrap on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-ink tracking-tight">Leads Activity</h3>
+          <h3 className="text-base sm:text-lg font-semibold text-ink tracking-tight whitespace-nowrap">
+            Leads Activity
+          </h3>
           <p className="text-xs text-ink-muted">Inbound leads vs completed follow-ups</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           {/* Timeframe Selector */}
-          <div className="flex items-center p-0.5 bg-surface-subtle rounded-lg border border-border-subtle text-[11px] font-semibold text-ink-secondary">
+          <div className="flex items-center p-0.5 bg-surface-subtle rounded-lg border border-border-subtle text-[11px] font-semibold text-ink-secondary shrink-0">
             {(['7D', '30D', '90D'] as const).map(item => (
               <button
                 key={item}
                 type="button"
                 onClick={() => setRange(item)}
-                className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap ${
                   range === item ? 'bg-surface text-ink shadow-xs font-bold' : 'hover:text-ink'
                 }`}
               >
@@ -54,10 +59,10 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ data, onExportCsv })
           <button
             type="button"
             onClick={onExportCsv}
-            className="h-8 px-3 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+            className="h-8 px-3 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
           >
             <Download size={13} strokeWidth={2.5} className="text-[#14161A]" />
-            <span className="text-[#14161A]">Export</span>
+            <span className="text-[#14161A] whitespace-nowrap">Export</span>
           </button>
         </div>
       </div>
@@ -65,7 +70,7 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ data, onExportCsv })
       {/* Chart Canvas */}
       <div className="h-[200px] w-full pt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barGap={4} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <BarChart data={chartData} barGap={4} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E3E6E8" opacity={0.6} />
             <XAxis
               dataKey="day"
