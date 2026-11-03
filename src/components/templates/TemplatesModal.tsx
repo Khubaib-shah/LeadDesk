@@ -18,9 +18,18 @@ interface TemplatesModalProps {
   onClose: () => void;
 }
 
+const fallbackTemplate: LeadTemplate = {
+  id: 'tpl-default',
+  title: 'Direct WhatsApp Outreach',
+  category: 'first_reply',
+  channel: 'WhatsApp',
+  body: 'Hi {{first_name}}! Thanks for reaching out regarding {{purpose}}. Are you free for a quick 10-minute chat this week?',
+};
+
 export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose }) => {
-  const [templates, setTemplates] = useState<LeadTemplate[]>(SEED_TEMPLATES);
-  const [selectedTemplate, setSelectedTemplate] = useState<LeadTemplate>(SEED_TEMPLATES[0]);
+  const initialTemplates = SEED_TEMPLATES && SEED_TEMPLATES.length > 0 ? SEED_TEMPLATES : [fallbackTemplate];
+  const [templates, setTemplates] = useState<LeadTemplate[]>(initialTemplates);
+  const [selectedTemplate, setSelectedTemplate] = useState<LeadTemplate>(initialTemplates[0]);
   const [previewName, setPreviewName] = useState('Alex');
   const [previewPurpose, setPreviewPurpose] = useState('Software project');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -40,10 +49,11 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
 
   if (!isOpen) return null;
 
-  const previewBody = fillTemplateVariables(selectedTemplate.body, {
+  const currentTemplate = selectedTemplate || templates[0] || fallbackTemplate;
+  const previewBody = fillTemplateVariables(currentTemplate.body || '', {
     firstName: previewName,
     purpose: previewPurpose,
-    myName: 'Zubair',
+    myName: 'Creator',
     topic: 'MVP launch timeline',
   });
 
@@ -83,7 +93,7 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
           {/* Templates List */}
           <div className="md:col-span-5 p-4 space-y-2 overflow-y-auto max-h-[500px]">
             {templates.map(tpl => {
-              const isSelected = selectedTemplate.id === tpl.id;
+              const isSelected = currentTemplate.id === tpl.id;
               return (
                 <button
                   key={tpl.id}
@@ -116,10 +126,10 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">
-                  Live Preview ({selectedTemplate.channel})
+                  Live Preview ({currentTemplate.channel})
                 </span>
                 <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-surface-subtle border border-border-subtle text-ink-secondary">
-                  Category: {selectedTemplate.category}
+                  Category: {currentTemplate.category}
                 </span>
               </div>
 
@@ -145,14 +155,14 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
                 </div>
               </div>
 
-              {selectedTemplate.subject && (
+              {currentTemplate.subject && (
                 <div className="p-2.5 rounded-xl bg-surface-subtle text-xs">
                   <span className="text-ink-muted font-semibold block">Subject:</span>
                   <span className="text-ink font-bold">
-                    {fillTemplateVariables(selectedTemplate.subject, {
+                    {fillTemplateVariables(currentTemplate.subject, {
                       firstName: previewName,
                       purpose: previewPurpose,
-                      myName: 'Zubair',
+                      myName: 'Creator',
                     })}
                   </span>
                 </div>
@@ -168,11 +178,11 @@ export const TemplatesModal: React.FC<TemplatesModalProps> = ({ isOpen, onClose 
             <div className="pt-4 border-t border-border-subtle flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => handleCopy(previewBody, selectedTemplate.id)}
+                onClick={() => handleCopy(previewBody, currentTemplate.id)}
                 className="h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-2 cursor-pointer transition-colors shadow-xs"
               >
-                {copiedId === selectedTemplate.id ? <Check size={15} className="text-[#14161A]" /> : <Copy size={15} className="text-[#14161A]" />}
-                <span className="text-[#14161A]">{copiedId === selectedTemplate.id ? 'Copied!' : 'Copy Formatted Text'}</span>
+                {copiedId === currentTemplate.id ? <Check size={15} className="text-[#14161A]" /> : <Copy size={15} className="text-[#14161A]" />}
+                <span className="text-[#14161A]">{copiedId === currentTemplate.id ? 'Copied!' : 'Copy Formatted Text'}</span>
               </button>
             </div>
           </div>

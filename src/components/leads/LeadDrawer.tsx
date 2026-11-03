@@ -26,7 +26,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
-import { Lead, LeadStage, LeadTemperature, InteractionType } from '../../types';
+import { Lead, LeadTemplate, LeadStage, LeadTemperature, InteractionType } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
 import { CustomSelect } from '../common/Select';
@@ -107,11 +107,20 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
   if (!lead) return null;
 
   const displayName = getLeadDisplayName(lead);
-  const selectedTemplate = SEED_TEMPLATES.find(t => t.id === selectedTemplateId) || SEED_TEMPLATES[0];
-  const filledMessage = fillTemplateVariables(selectedTemplate.body, {
+  const fallbackTemplate: LeadTemplate = {
+    id: 'tpl-default',
+    title: 'Direct WhatsApp Outreach',
+    category: 'first_reply',
+    channel: 'WhatsApp',
+    body: 'Hi {{first_name}}, thanks for reaching out regarding {{purpose}}! When would be a good time to connect?',
+  };
+  const availableTemplates = SEED_TEMPLATES && SEED_TEMPLATES.length > 0 ? SEED_TEMPLATES : [fallbackTemplate];
+  const selectedTemplate = availableTemplates.find(t => t.id === selectedTemplateId) || availableTemplates[0] || fallbackTemplate;
+  const templateBody = selectedTemplate?.body || fallbackTemplate.body;
+  const filledMessage = fillTemplateVariables(templateBody, {
     firstName: displayName.split(' ')[0],
     purpose: lead.purpose,
-    myName: 'Zubair',
+    myName: 'Creator',
     topic: lead.interestedIn || lead.purpose,
   });
 
@@ -119,7 +128,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
   const emailUrl = lead.email
     ? buildGmailComposeUrl(
         lead.email,
-        selectedTemplate.subject ? fillTemplateVariables(selectedTemplate.subject, { firstName: displayName, purpose: lead.purpose, myName: 'Zubair' }) : `Regarding ${lead.purpose}`,
+        selectedTemplate?.subject ? fillTemplateVariables(selectedTemplate.subject, { firstName: displayName, purpose: lead.purpose, myName: 'Creator' }) : `Regarding ${lead.purpose}`,
         filledMessage
       )
     : '';
@@ -361,7 +370,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
                 value={selectedTemplateId}
                 onChange={val => setSelectedTemplateId(val)}
                 className="w-48"
-                options={SEED_TEMPLATES.map(t => ({
+                options={availableTemplates.map(t => ({
                   value: t.id,
                   label: t.title,
                 }))}
