@@ -114,29 +114,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           aria-label="LeadDesk Home"
           className="pointer-events-auto w-11 h-11 sm:w-12 sm:h-12 rounded-[16px] bg-surface border border-border-subtle/80 flex items-center justify-center text-ink shadow-[0_1px_2px_rgba(20,22,26,0.04),0_8px_20px_rgba(20,22,26,0.06)] cursor-pointer transition-colors"
         >
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="text-ink"
-          >
-            <path
-              d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z"
-              stroke="currentColor"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M9 11.5L11.5 14L15.5 9.5"
-              stroke="#D4F56B"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
+          <img
+            src="/logo.webp"
+            alt="LeadDesk Logo"
+            className="w-6 h-6 object-contain dark:invert select-none pointer-events-none"
+          />
         </motion.button>
 
         {/* Right Action Buttons */}
@@ -263,22 +245,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                 <div className="flex items-center justify-between pb-6 border-b border-border-subtle/80">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-[14px] bg-surface-subtle border border-border-subtle flex items-center justify-center text-ink font-bold shadow-xs">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                        <path
-                          d="M21 11.5C21.0034 12.8199 20.6951 14.1219 20.1 15.3C19.3944 16.7118 18.3098 17.8992 16.9674 18.7293C15.6251 19.5594 14.0782 19.9994 12.5 20C11.1801 20.0035 9.87812 19.6951 8.7 19.1L3 21L4.9 15.3C4.30493 14.1219 3.99656 12.8199 4 11.5C4.00061 9.92179 4.44061 8.37488 5.27072 7.03258C6.10083 5.69028 7.28825 4.6056 8.7 3.90003C9.87812 3.30496 11.1801 2.99659 12.5 3.00003H13C15.0843 3.11502 17.053 3.99479 18.5291 5.47089C20.0052 6.94699 20.885 8.91568 21 11V11.5Z"
-                          stroke="currentColor"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                        <path
-                          d="M9 11.5L11.5 14L15.5 9.5"
-                          stroke="#D4F56B"
-                          strokeWidth="2.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                      <img
+                        src="/logo.webp"
+                        alt="LeadDesk Logo"
+                        className="w-6 h-6 object-contain dark:invert select-none pointer-events-none"
+                      />
                     </div>
                     <div>
                       <p className="text-sm font-bold text-ink">LeadDesk</p>
