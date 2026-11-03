@@ -33,16 +33,18 @@ export const connectDatabase = async (): Promise<boolean> => {
 
   cache.promise = (async () => {
     try {
-      console.log('[Database] Connecting to MongoDB...');
+      const dbName = process.env.MONGODB_DB_NAME || 'leaddesk';
+      console.log(`[Database] Connecting to MongoDB (db: ${dbName})...`);
       await mongoose.connect(mongoUri, {
-        serverSelectionTimeoutMS: 3000,
-        connectTimeoutMS: 4000,
-        autoIndex: false,
+        dbName,
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+        autoIndex: true,
       });
       cache.conn = mongoose;
       console.log('[Database] Successfully connected to MongoDB via Mongoose.');
 
-      // Auto-seed if collections are empty
+      // Auto-seed if collections are empty and ensure collections exist in DB
       await autoSeedDatabase();
       return true;
     } catch (error) {
@@ -57,24 +59,30 @@ export const connectDatabase = async (): Promise<boolean> => {
 
 export const isMongoConnected = (): boolean => mongoose.connection.readyState === 1;
 
-// Ensure clean state: purge any mock leads and initialize profile settings if missing
+// Ensure clean state: create collections in Atlas, purge any mock leads and initialize profile settings if missing
 async function autoSeedDatabase() {
   try {
     const { LeadModel } = await import('../modules/leads/lead.model');
     const { TemplateModel } = await import('../modules/templates/template.model');
     const { SettingsModel } = await import('../modules/settings/settings.model');
 
-    // Wipe any previous mock leads and templates to guarantee a completely fresh, empty workspace
+    // 1. Explicitly ensure collections ("folders") exist in MongoDB Atlas
+    await LeadModel.createCollection().catch(e => console.log('[Database] leads collection ready:', (e as Error).message));
+    await TemplateModel.createCollection().catch(e => console.log('[Database] templates collection ready:', (e as Error).message));
+    await SettingsModel.createCollection().catch(e => console.log('[Database] settings collection ready:', (e as Error).message));
+
+    // 2. Wipe any previous mock leads and templates to guarantee a completely fresh, empty workspace
     await LeadModel.deleteMany({});
     await TemplateModel.deleteMany({});
     console.log('[Database] Leads and templates cleared. Clean state ready for user.');
 
-    // Ensure Profile Settings exist in DB
-    const settingsCount = await SettingsModel.countDocuments();
-    if (settingsCount === 0) {
+    // 3. Ensure Profile Settings document exists in DB
+    const existingSettings = await SettingsModel.findOne({ id: 'app_settings' });
+    if (!existingSettings) {
       console.log('[Database] Initializing profile settings in DB...');
       await SettingsModel.create({ id: 'app_settings', ...MOCK_SETTINGS });
     }
+    console.log('[Database] MongoDB collections ready: leads, settings, templates');
   } catch (err) {
     console.error('[Database] Database initialization issue:', err);
   }
