@@ -29,16 +29,16 @@ export const BarChartCard: React.FC<BarChartCardProps> = ({ leads, onExportCsv }
 
   return (
     <div className="rounded-[20px] p-5 sm:p-6 bg-surface border border-border-subtle/80 flex flex-col justify-between shadow-xs">
-      {/* Header row: responsive wrap on mobile */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-base sm:text-lg font-semibold text-ink tracking-tight whitespace-nowrap">
+      {/* Header row: flexible wrap for any grid column width */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div className="min-w-fit">
+          <h3 className="text-base sm:text-lg font-bold text-ink tracking-tight whitespace-nowrap">
             Leads Activity
           </h3>
           <p className="text-xs text-ink-muted">Inbound leads vs completed follow-ups</p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           {/* Timeframe Selector */}
           <div className="flex items-center p-0.5 bg-surface-subtle rounded-lg border border-border-subtle text-[11px] font-semibold text-ink-secondary shrink-0">
             {(['7D', '30D', '90D'] as const).map(item => (

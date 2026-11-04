@@ -204,46 +204,135 @@ export default function App() {
     };
   }, [selectedLead, activeTab]);
 
-  // Lead CRUD handlers
+  // Lead CRUD handlers with Optimistic UI updates & automatic rollback
   const handleSaveNewLead = async (leadData: Partial<Lead>, andAddAnother = false) => {
-    const saved = await leadsApi.createLead(leadData);
-    await refreshData();
-    toast.success(`Lead ${saved.fullName || saved.whatsappNumber} created!`, {
-      action: {
-        label: 'Open',
-        onClick: () => handleOpenLead(saved),
-      },
-    });
-    return saved;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const now = new Date().toISOString();
+    const optimisticLead: Lead = {
+      id: tempId,
+      fullName: leadData.fullName || 'New Lead',
+      whatsappNumber: leadData.whatsappNumber || '',
+      altPhone: leadData.altPhone,
+      email: leadData.email,
+      company: leadData.company,
+      city: leadData.city,
+      country: leadData.country,
+      source: leadData.source || 'WhatsApp',
+      sourceDetail: leadData.sourceDetail,
+      referredBy: leadData.referredBy,
+      firstContactAt: leadData.firstContactAt || now,
+      purpose: leadData.purpose || 'Software project',
+      interestedIn: leadData.interestedIn,
+      estimatedValue: leadData.estimatedValue || 0,
+      currency: leadData.currency || 'USD',
+      summary: leadData.summary || '',
+      interactions: leadData.interactions || [],
+      stage: leadData.stage || 'New',
+      temperature: leadData.temperature || 'Warm',
+      nextFollowUpAt: leadData.nextFollowUpAt,
+      followUpChannel: leadData.followUpChannel || 'WhatsApp',
+      followUpNote: leadData.followUpNote,
+      reminder: leadData.reminder || 'at_time',
+      lastContactedAt: now,
+      followUpCount: 0,
+      tags: leadData.tags || [],
+      createdAt: now,
+      updatedAt: now,
+      archived: false,
+      avatarColor: 'mint',
+      ...leadData,
+    };
+
+    // 1. Instantly update UI optimistically
+    setLeads(prev => [optimisticLead, ...prev]);
+
+    try {
+      // 2. Call backend API
+      const saved = await leadsApi.createLead(leadData);
+
+      // 3. Swap the temporary optimistic lead with the persisted server lead
+      setLeads(prev => prev.map(l => (l.id === tempId ? saved : l)));
+
+      toast.success(`Lead "${saved.fullName || saved.whatsappNumber}" saved successfully!`, {
+        action: {
+          label: 'Open',
+          onClick: () => handleOpenLead(saved),
+        },
+      });
+      return saved;
+    } catch (err: any) {
+      // 4. Automatic rollback: remove optimistic lead from UI
+      setLeads(prev => prev.filter(l => l.id !== tempId));
+      const preciseError = err?.message || 'Server connection error. Please try again.';
+      toast.error(`Unable to create lead: ${preciseError}`);
+      throw err;
+    }
   };
 
   const handleUpdateLead = async (id: string, updates: Partial<Lead>) => {
-    const updated = await leadsApi.updateLead(id, updates);
-    await refreshData();
+    const previous = leads.find(l => l.id === id);
+    if (!previous) return;
+
+    // Optimistically update
+    const optimisticUpdated: Lead = {
+      ...previous,
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+    setLeads(prev => prev.map(l => (l.id === id ? optimisticUpdated : l)));
     if (selectedLead && selectedLead.id === id) {
-      setSelectedLead(updated);
+      setSelectedLead(optimisticUpdated);
+    }
+
+    try {
+      const serverUpdated = await leadsApi.updateLead(id, updates);
+      setLeads(prev => prev.map(l => (l.id === id ? serverUpdated : l)));
+      if (selectedLead && selectedLead.id === id) {
+        setSelectedLead(serverUpdated);
+      }
+    } catch (err: any) {
+      // Rollback to previous state
+      setLeads(prev => prev.map(l => (l.id === id ? previous : l)));
+      if (selectedLead && selectedLead.id === id) {
+        setSelectedLead(previous);
+      }
+      const preciseError = err?.message || 'Failed to sync with server. Please try again.';
+      toast.error(`Unable to update lead: ${preciseError}`);
     }
   };
 
   const handleDeleteLead = async (id: string) => {
     const previous = leads.find(l => l.id === id);
-    await leadsApi.deleteLead(id);
-    await refreshData();
+    if (!previous) return;
+
+    // Optimistically remove
+    setLeads(prev => prev.filter(l => l.id !== id));
     if (selectedLead && selectedLead.id === id) {
       handleCloseLead();
     }
-    toast('Lead removed', {
-      action: previous
-        ? {
-            label: 'Undo',
-            onClick: async () => {
-              await leadsApi.createLead(previous);
-              await refreshData();
-              toast.success('Lead restored');
-            },
-          }
-        : undefined,
-    });
+
+    try {
+      await leadsApi.deleteLead(id);
+      toast('Lead removed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              const restored = await leadsApi.createLead(previous);
+              setLeads(prev => [restored, ...prev]);
+              toast.success('Lead restored successfully');
+            } catch (err: any) {
+              toast.error(`Could not restore lead: ${err?.message || 'Server error'}`);
+            }
+          },
+        },
+      });
+    } catch (err: any) {
+      // Rollback
+      setLeads(prev => [previous, ...prev]);
+      const preciseError = err?.message || 'Failed to remove from database.';
+      toast.error(`Unable to delete lead: ${preciseError}`);
+    }
   };
 
   const handleLogInteraction = async (
@@ -251,10 +340,40 @@ export default function App() {
     interaction: { type: InteractionType; text: string; timestamp: string },
     nextDate?: string
   ) => {
-    const updated = await leadsApi.logInteraction(leadId, interaction, nextDate);
-    await refreshData();
-    if (selectedLead && selectedLead.id === leadId) {
-      setSelectedLead(updated);
+    const previous = leads.find(l => l.id === leadId);
+    if (previous) {
+      // Optimistic interaction log
+      const newInt = {
+        id: `temp-int-${Date.now()}`,
+        ...interaction,
+      };
+      const optimisticUpdated: Lead = {
+        ...previous,
+        interactions: [...previous.interactions, newInt],
+        lastContactedAt: interaction.timestamp,
+        followUpCount: (previous.followUpCount || 0) + 1,
+        ...(nextDate !== undefined ? { nextFollowUpAt: nextDate } : {}),
+      };
+      setLeads(prev => prev.map(l => (l.id === leadId ? optimisticUpdated : l)));
+      if (selectedLead && selectedLead.id === leadId) {
+        setSelectedLead(optimisticUpdated);
+      }
+    }
+
+    try {
+      const updated = await leadsApi.logInteraction(leadId, interaction, nextDate);
+      setLeads(prev => prev.map(l => (l.id === leadId ? updated : l)));
+      if (selectedLead && selectedLead.id === leadId) {
+        setSelectedLead(updated);
+      }
+    } catch (err: any) {
+      if (previous) {
+        setLeads(prev => prev.map(l => (l.id === leadId ? previous : l)));
+        if (selectedLead && selectedLead.id === leadId) {
+          setSelectedLead(previous);
+        }
+      }
+      toast.error(`Could not log follow-up: ${err?.message || 'Server error'}`);
     }
   };
 

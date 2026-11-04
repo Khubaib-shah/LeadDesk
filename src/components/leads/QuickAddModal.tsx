@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Mic, AlertCircle, Sparkles, ChevronDown, Check, ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { X, Mic, AlertCircle, Sparkles, ChevronDown, Check, ArrowRight, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { Lead, LeadSource, LeadPurpose } from '../../types';
 import { parsePhoneInput, findDuplicatePhone } from '../../utils/phone';
 import { useTextToSpeech, useVoiceRecognition } from '../../utils/speech';
@@ -149,9 +149,13 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     return target.toISOString();
   };
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleSubmit = async (andAddAnother = false) => {
+    if (isSubmitting) return;
+
     if (!parsedPhone.isValid && !email) {
-      toast.error('Please enter a valid phone number or email.');
+      toast.error('Please enter a valid phone number or email address.');
       phoneInputRef.current?.focus();
       return;
     }
@@ -183,7 +187,8 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
     };
 
     try {
-      const saved = await onSaveLead(leadData, andAddAnother);
+      setIsSubmitting(true);
+      await onSaveLead(leadData, andAddAnother);
       if (andAddAnother) {
         setPhoneRaw('');
         setFullName('');
@@ -193,8 +198,11 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
       } else {
         onClose();
       }
-    } catch (err) {
-      toast.error('Could not save lead');
+    } catch (err: any) {
+      const errorMsg = err?.message || 'Unable to connect to database. Please check your network and try again.';
+      toast.error(`Could not save lead: ${errorMsg}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -573,23 +581,35 @@ export const QuickAddModal: React.FC<QuickAddModalProps> = ({
               </div>
             </form>
 
-            {/* Footer Actions: Lime Save lead, Save & add another */}
+            {/* Footer Actions: Lime Save lead, Save & add another with loading state */}
             <div className="p-4 border-t border-border-subtle bg-surface flex items-center justify-between gap-2">
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => handleSubmit(true)}
-                className="h-10 px-3 rounded-xl border border-border-subtle hover:bg-surface-subtle text-xs font-semibold text-ink-secondary hover:text-ink cursor-pointer transition-colors"
+                className="h-10 px-3.5 rounded-xl border border-border-subtle hover:bg-surface-subtle disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold text-ink-secondary hover:text-ink cursor-pointer transition-colors flex items-center gap-1.5 shrink-0"
               >
-                Save & Add Another
+                {isSubmitting && <Loader2 size={13} className="animate-spin text-ink-secondary" />}
+                <span>Save & Add Another</span>
               </button>
 
               <button
                 type="button"
+                disabled={isSubmitting}
                 onClick={() => handleSubmit(false)}
-                className="flex-1 h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                className="flex-1 h-10 px-4 rounded-xl bg-lime hover:bg-lime-hover disabled:opacity-60 disabled:cursor-not-allowed text-[#14161A] font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
               >
-                <span className="text-[#14161A]">Save Lead</span>
-                <span className="text-[10px] text-[#14161A]/70 font-normal hidden sm:inline">(Enter)</span>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin text-[#14161A]" />
+                    <span className="text-[#14161A]">Saving Lead...</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[#14161A]">Save Lead</span>
+                    <span className="text-[10px] text-[#14161A]/70 font-normal hidden sm:inline">(Enter)</span>
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

@@ -210,14 +210,6 @@ export function getFollowUpDiscipline(leads: Lead[]): { percentage: number; labe
   const activeLeads = leads.filter(l => !l.archived && l.stage !== 'Won' && l.stage !== 'Lost');
   const leadsWithFollowUp = activeLeads.filter(l => l.nextFollowUpAt);
 
-  if (leadsWithFollowUp.length === 0) {
-    return {
-      percentage: 100,
-      label: '100% On-Time',
-      subtext: 'No pending follow-ups overdue',
-    };
-  }
-
   let overdueCount = 0;
   leadsWithFollowUp.forEach(l => {
     if (isFollowUpOverdue(l.nextFollowUpAt)) {
@@ -226,14 +218,39 @@ export function getFollowUpDiscipline(leads: Lead[]): { percentage: number; labe
   });
 
   const onTimeCount = leadsWithFollowUp.length - overdueCount;
-  const percentage = Math.max(0, Math.min(100, Math.round((onTimeCount / leadsWithFollowUp.length) * 100)));
+  const percentage = leadsWithFollowUp.length === 0
+    ? 100
+    : Math.max(0, Math.min(100, Math.round((onTimeCount / leadsWithFollowUp.length) * 100)));
+
+  // Compute dynamic average response turnaround from real interactions
+  let totalHours = 0;
+  let count = 0;
+  leads.forEach(l => {
+    if (l.interactions && l.interactions.length > 0 && l.firstContactAt) {
+      const first = new Date(l.firstContactAt).getTime();
+      const firstResponse = new Date(l.interactions[0].timestamp).getTime();
+      const diffHours = (firstResponse - first) / (1000 * 60 * 60);
+      if (diffHours >= 0 && diffHours < 168) {
+        totalHours += diffHours;
+        count++;
+      }
+    }
+  });
+
+  let subtext = '';
+  if (count > 0) {
+    const avgHours = Math.max(0.5, Math.round((totalHours / count) * 10) / 10);
+    subtext = `Avg response ${avgHours}h · ${overdueCount} overdue, ${onTimeCount} on-time`;
+  } else if (overdueCount === 0) {
+    subtext = 'All scheduled follow-ups on track';
+  } else {
+    subtext = `${overdueCount} overdue · ${onTimeCount} on-time`;
+  }
 
   return {
     percentage,
     label: `${percentage}% On-Time`,
-    subtext: overdueCount === 0
-      ? 'All scheduled follow-ups on track'
-      : `${overdueCount} overdue · ${onTimeCount} on track`,
+    subtext,
   };
 }
 

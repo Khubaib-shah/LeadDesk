@@ -90,15 +90,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ leads }) => {
           </div>
         </div>
 
-        <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0">
-          <table className="min-w-[620px] w-full text-left border-collapse text-xs">
+        <div className="overflow-x-auto -mx-5 px-5 sm:mx-0 sm:px-0 pb-1">
+          <table className="min-w-[640px] w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-border-subtle text-ink-muted pb-2">
-                <th className="py-2.5 font-medium whitespace-nowrap">Content Asset / Topic</th>
-                <th className="py-2.5 font-medium whitespace-nowrap">Platform</th>
-                <th className="py-2.5 font-medium text-center whitespace-nowrap">Leads Generated</th>
-                <th className="py-2.5 font-medium text-center whitespace-nowrap">Deals Won</th>
-                <th className="py-2.5 font-medium text-right whitespace-nowrap">Revenue Generated</th>
+                <th className="py-2.5 pr-4 font-semibold whitespace-nowrap min-w-[200px]">Content Asset / Topic</th>
+                <th className="py-2.5 pr-4 font-semibold whitespace-nowrap min-w-[100px]">Platform</th>
+                <th className="py-2.5 pr-4 font-semibold text-center whitespace-nowrap min-w-[110px]">Leads Generated</th>
+                <th className="py-2.5 pr-4 font-semibold text-center whitespace-nowrap min-w-[90px]">Deals Won</th>
+                <th className="py-2.5 font-semibold text-right whitespace-nowrap min-w-[130px]">Revenue Generated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border-subtle/50">

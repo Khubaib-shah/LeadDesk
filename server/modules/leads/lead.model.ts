@@ -167,17 +167,55 @@ const normalizeLeadDoc = (d: any): Lead => ({
   avatarColor: d.avatarColor || 'mint',
 });
 
+// Helper to ensure database is connected before any repository action
+const ensureConnected = async () => {
+  if (!isMongoConnected() && process.env.MONGODB_URI) {
+    const { connectDatabase } = await import('../../config/db');
+    await connectDatabase();
+  }
+};
+
 // Unified Repository Pattern (Swaps between real MongoDB and in-memory mock seamlessly)
 export class LeadRepository {
   static async getAll(): Promise<Lead[]> {
+    await ensureConnected();
+
     if (isMongoConnected()) {
-      const docs = await LeadModel.find().lean();
-      return docs.map(normalizeLeadDoc);
+      let docs = await LeadModel.find().lean();
+
+      // Safeguard: if 0 leads found in current dbName, check if alternate db (leaddeck vs leaddesk) has leads
+      if (docs.length === 0 && (mongoose.connection as any).client) {
+        try {
+          const currentDb = mongoose.connection.db?.databaseName;
+          const alternateDb = currentDb === 'leaddeck' ? 'leaddesk' : 'leaddeck';
+          const altCollection = (mongoose.connection as any).client.db(alternateDb).collection('leads');
+          const altDocs = await altCollection.find({}).toArray();
+          if (altDocs.length > 0) {
+            console.log(`[Database] Auto-migrating ${altDocs.length} leads from alternate db "${alternateDb}" to "${currentDb}"...`);
+            for (const altDoc of altDocs) {
+              const { _id, ...cleanDoc } = altDoc;
+              await LeadModel.updateOne({ id: cleanDoc.id }, { $set: cleanDoc }, { upsert: true });
+            }
+            docs = await LeadModel.find().lean();
+          }
+        } catch (err) {
+          console.warn('[Database] Sync check warning:', (err as Error).message);
+        }
+      }
+
+      const normalized = docs.map(normalizeLeadDoc);
+      // Keep in-memory store warm with the latest leads
+      if (normalized.length > 0) {
+        inMemoryLeads = [...normalized];
+      }
+      return normalized;
     }
     return [...inMemoryLeads];
   }
 
   static async getById(id: string): Promise<Lead | null> {
+    await ensureConnected();
+
     if (isMongoConnected()) {
       const query = mongoose.Types.ObjectId.isValid(id)
         ? { $or: [{ id }, { _id: id }] }
@@ -191,6 +229,8 @@ export class LeadRepository {
   }
 
   static async create(leadData: Partial<Lead>): Promise<Lead> {
+    await ensureConnected();
+
     const now = new Date().toISOString();
     const id = leadData.id || `lead-${Date.now()}`;
     const newLead: Lead = {
@@ -234,14 +274,35 @@ export class LeadRepository {
     };
 
     if (isMongoConnected()) {
-      await LeadModel.create(newLead);
-    } else {
-      inMemoryLeads.unshift(newLead);
+      await LeadModel.findOneAndUpdate(
+        { id: newLead.id },
+        { $set: newLead },
+        { upsert: true, new: true }
+      );
+
+      // Also mirror to alternate db name (leaddeck <-> leaddesk) so both stay identical
+      try {
+        if ((mongoose.connection as any).client) {
+          const currentDb = mongoose.connection.db?.databaseName;
+          const alternateDb = currentDb === 'leaddeck' ? 'leaddesk' : 'leaddeck';
+          await (mongoose.connection as any).client
+            .db(alternateDb)
+            .collection('leads')
+            .updateOne({ id: newLead.id }, { $set: newLead }, { upsert: true });
+        }
+      } catch {
+        // non-blocking
+      }
     }
+
+    // Always keep in-memory fallback updated
+    inMemoryLeads = [newLead, ...inMemoryLeads.filter(l => l.id !== newLead.id)];
     return newLead;
   }
 
   static async update(id: string, updates: Partial<Lead>): Promise<Lead | null> {
+    await ensureConnected();
+
     const updatedAt = new Date().toISOString();
     const cleanUpdates = { ...updates, updatedAt };
 
@@ -254,8 +315,25 @@ export class LeadRepository {
         { $set: cleanUpdates },
         { new: true }
       ).lean();
-      if (!updated) return null;
-      return normalizeLeadDoc(updated);
+
+      // Mirror update to alternate DB as well
+      try {
+        if ((mongoose.connection as any).client) {
+          const currentDb = mongoose.connection.db?.databaseName;
+          const alternateDb = currentDb === 'leaddeck' ? 'leaddesk' : 'leaddeck';
+          await (mongoose.connection as any).client
+            .db(alternateDb)
+            .collection('leads')
+            .updateOne(query, { $set: cleanUpdates });
+        }
+      } catch {}
+
+      if (updated) {
+        const normalized = normalizeLeadDoc(updated);
+        inMemoryLeads = inMemoryLeads.map(l => (l.id === id ? normalized : l));
+        return normalized;
+      }
+      return null;
     }
 
     const index = inMemoryLeads.findIndex(l => l.id === id);
@@ -265,26 +343,52 @@ export class LeadRepository {
   }
 
   static async delete(id: string): Promise<boolean> {
+    await ensureConnected();
+
+    let deleted = false;
     if (isMongoConnected()) {
       const query = mongoose.Types.ObjectId.isValid(id)
         ? { $or: [{ id }, { _id: id }] }
         : { id };
       const res = await LeadModel.deleteOne(query);
-      return res.deletedCount > 0;
+      try {
+        if ((mongoose.connection as any).client) {
+          const currentDb = mongoose.connection.db?.databaseName;
+          const alternateDb = currentDb === 'leaddeck' ? 'leaddesk' : 'leaddeck';
+          await (mongoose.connection as any).client
+            .db(alternateDb)
+            .collection('leads')
+            .deleteOne(query);
+        }
+      } catch {}
+      deleted = res.deletedCount > 0;
     }
     const initialLen = inMemoryLeads.length;
     inMemoryLeads = inMemoryLeads.filter(l => l.id !== id);
-    return inMemoryLeads.length < initialLen;
+    return deleted || inMemoryLeads.length < initialLen;
   }
 
   static async bulkDelete(ids: string[]): Promise<number> {
+    await ensureConnected();
+
+    let deletedCount = 0;
     if (isMongoConnected()) {
       const res = await LeadModel.deleteMany({ id: { $in: ids } });
-      return res.deletedCount || 0;
+      try {
+        if ((mongoose.connection as any).client) {
+          const currentDb = mongoose.connection.db?.databaseName;
+          const alternateDb = currentDb === 'leaddeck' ? 'leaddesk' : 'leaddeck';
+          await (mongoose.connection as any).client
+            .db(alternateDb)
+            .collection('leads')
+            .deleteMany({ id: { $in: ids } });
+        }
+      } catch {}
+      deletedCount = res.deletedCount || 0;
     }
     const countBefore = inMemoryLeads.length;
     inMemoryLeads = inMemoryLeads.filter(l => !ids.includes(l.id));
-    return countBefore - inMemoryLeads.length;
+    return deletedCount || countBefore - inMemoryLeads.length;
   }
 
   static async logInteraction(

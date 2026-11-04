@@ -27,18 +27,18 @@ export const RecentLeadsCard: React.FC<RecentLeadsCardProps> = ({
   return (
     <div className="rounded-[20px] p-6 bg-surface border border-border-subtle/80 flex flex-col justify-between shadow-xs">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-ink tracking-tight">Recent Leads</h3>
-          <p className="text-xs text-ink-muted">Latest contacts captured across all channels</p>
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-ink tracking-tight whitespace-nowrap">Recent Leads</h3>
+          <p className="text-xs text-ink-muted truncate">Latest contacts captured across all channels</p>
         </div>
 
         <button
           type="button"
           onClick={onViewAll}
-          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0 whitespace-nowrap"
+          className="h-8 px-3.5 rounded-[10px] bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs shrink-0 whitespace-nowrap min-w-fit select-none"
         >
-          <span className="text-[#14161A] whitespace-nowrap">View all</span>
+          <span className="text-[#14161A] whitespace-nowrap leading-none">View all</span>
           <ArrowRight size={13} strokeWidth={2.5} className="text-[#14161A] shrink-0" />
         </button>
       </div>
