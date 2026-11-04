@@ -20,10 +20,16 @@ import {
   Phone,
   Briefcase,
   Share2,
+  Bell,
+  Send,
+  Check,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { CustomSelect } from '../common/Select';
 import { getInitials } from '../../utils/leads';
+import { requestPushPermission, triggerPushNotification, playNotificationChime } from '../../utils/notifications';
 import { toast } from 'sonner';
 
 interface SettingsModalProps {
@@ -36,7 +42,7 @@ interface SettingsModalProps {
   onToggleTheme: () => void;
 }
 
-type SettingsTab = 'profile' | 'preferences' | 'appearance';
+type SettingsTab = 'profile' | 'preferences' | 'notifications' | 'appearance';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
@@ -72,6 +78,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [cadenceStr, setCadenceStr] = useState((settings.cadenceDays || [2, 5, 10]).join(', '));
   const [reducedMotion, setReducedMotion] = useState(Boolean(settings.reducedMotion));
 
+  // Push & Email Notification Settings
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(settings.pushNotificationsEnabled ?? true);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(settings.emailNotificationsEnabled ?? true);
+  const [remind2HoursBefore, setRemind2HoursBefore] = useState(settings.remind2HoursBefore ?? true);
+  const [remind1HourBefore, setRemind1HourBefore] = useState(settings.remind1HourBefore ?? true);
+  const [remind10MinBefore, setRemind10MinBefore] = useState(settings.remind10MinBefore ?? true);
+  const [remindAtTime, setRemindAtTime] = useState(settings.remindAtTime ?? true);
+  const [remindOverdue, setRemindOverdue] = useState(settings.remindOverdue ?? true);
+  const [pushPermissionStatus, setPushPermissionStatus] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
+  const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
+  const [lastEmailPreviewUrl, setLastEmailPreviewUrl] = useState<string | null>(null);
+
   // Sync state whenever settings change
   useEffect(() => {
     setUserName(settings.userName || '');
@@ -90,9 +110,66 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setGoingColdDays(settings.goingColdDays || 7);
     setCadenceStr((settings.cadenceDays || [2, 5, 10]).join(', '));
     setReducedMotion(Boolean(settings.reducedMotion));
+    setPushNotificationsEnabled(settings.pushNotificationsEnabled ?? true);
+    setEmailNotificationsEnabled(settings.emailNotificationsEnabled ?? true);
+    setRemind2HoursBefore(settings.remind2HoursBefore ?? true);
+    setRemind1HourBefore(settings.remind1HourBefore ?? true);
+    setRemind10MinBefore(settings.remind10MinBefore ?? true);
+    setRemindAtTime(settings.remindAtTime ?? true);
+    setRemindOverdue(settings.remindOverdue ?? true);
+    if (typeof Notification !== 'undefined') {
+      setPushPermissionStatus(Notification.permission);
+    }
   }, [settings, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleRequestPush = async () => {
+    const res = await requestPushPermission();
+    setPushPermissionStatus(res);
+  };
+
+  const handleSendTestPush = async () => {
+    playNotificationChime();
+    await triggerPushNotification(
+      '🎯 Test Push: Alex Rivera',
+      'Follow-up due right now for Software Project ($5k). WhatsApp direct link ready.',
+      'test-lead',
+      'at_time'
+    );
+    toast.success('Test push alert triggered! (Audio chime + Native push)');
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!userEmail || !userEmail.trim() || !userEmail.includes('@')) {
+      toast.error('Please enter a valid email address first in Profile & Identity.');
+      setActiveTab('profile');
+      return;
+    }
+
+    setIsSendingTestEmail(true);
+    setLastEmailPreviewUrl(null);
+    try {
+      const res = await fetch('/api/notifications/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: userEmail.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Test email sent to ${userEmail}!`);
+        if (data.previewUrl) {
+          setLastEmailPreviewUrl(data.previewUrl);
+        }
+      } else {
+        toast.error(`Email delivery error: ${data.message}`);
+      }
+    } catch (err) {
+      toast.error(`Failed to send test email: ${(err as Error).message}`);
+    } finally {
+      setIsSendingTestEmail(false);
+    }
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,9 +197,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         goingColdDays: Number(goingColdDays) || 7,
         cadenceDays: parsedCadence.length > 0 ? parsedCadence : [2, 5, 10],
         reducedMotion,
+        pushNotificationsEnabled,
+        emailNotificationsEnabled,
+        remind2HoursBefore,
+        remind1HourBefore,
+        remind10MinBefore,
+        remindAtTime,
+        remindOverdue,
       });
 
-      toast.success('Profile and settings updated in database!');
+      toast.success('Profile, push & email notification settings updated!');
       onClose();
     } catch (err) {
       toast.error(`Save failed: ${(err as Error).message}`);
@@ -188,6 +272,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           >
             <Sliders size={15} />
             <span>CRM & Follow-ups</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('notifications')}
+            className={`pb-3 px-3 text-xs font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'notifications'
+                ? 'border-ink text-ink'
+                : 'border-transparent text-ink-muted hover:text-ink'
+            }`}
+          >
+            <Bell size={15} />
+            <span>Push & Email Alerts</span>
           </button>
 
           <button
@@ -450,7 +547,208 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: APPEARANCE & DATABASE */}
+          {/* TAB 3: PUSH NOTIFICATIONS & EMAIL ALERTS */}
+          {activeTab === 'notifications' && (
+            <div className="space-y-5">
+              {/* Push Notifications Card */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-lime flex items-center justify-center text-[#14161A] font-bold shrink-0">
+                      <Bell size={16} className="text-[#14161A]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink flex items-center gap-2">
+                        <span>Browser & Push Notifications</span>
+                        <span className="text-[10px] font-semibold text-ink-muted">· Firebase Connected</span>
+                      </p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        Receive instant sound and desktop push alerts for scheduled lead follow-ups.
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
+                      pushPermissionStatus === 'granted'
+                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
+                        : pushPermissionStatus === 'denied'
+                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30'
+                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
+                    }`}
+                  >
+                    {pushPermissionStatus === 'granted'
+                      ? 'Push Enabled'
+                      : pushPermissionStatus === 'denied'
+                      ? 'Blocked in Browser'
+                      : 'Permission Needed'}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border-subtle/70">
+                  {pushPermissionStatus !== 'granted' ? (
+                    <button
+                      type="button"
+                      onClick={handleRequestPush}
+                      className="h-9 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Bell size={13} className="text-[#14161A]" />
+                      <span>Enable Push Notifications</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSendTestPush}
+                      className="h-9 px-4 rounded-xl bg-surface border border-border-subtle hover:bg-surface-subtle text-ink font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    >
+                      <Send size={13} />
+                      <span>Send Test Push Notification</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Fallback Email Notification Card */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-pastel-lavender flex items-center justify-center text-[#14161A] font-bold shrink-0">
+                      <Mail size={16} className="text-[#14161A]" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink">Fallback Email Notifications</p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        If you miss or don&apos;t see the push alert, LeadDesk drops an automated reminder directly to your email.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-surface border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                  <div>
+                    <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">Recipient Email (from Profile Setting)</span>
+                    <span className="text-xs font-bold text-ink">
+                      {userEmail && userEmail.trim() ? userEmail : <em className="text-semantic-overdue font-normal">Not configured — set your email in Profile & Identity</em>}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={isSendingTestEmail || !userEmail}
+                    onClick={handleSendTestEmail}
+                    className="h-8 px-3 rounded-lg bg-surface-subtle hover:bg-border-subtle disabled:opacity-50 text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  >
+                    {isSendingTestEmail ? <Loader2 size={13} className="animate-spin text-ink" /> : <Send size={13} />}
+                    <span>{isSendingTestEmail ? 'Sending...' : 'Send Test Email'}</span>
+                  </button>
+                </div>
+
+                {lastEmailPreviewUrl && (
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
+                    <span>Email sent! Preview delivered message online:</span>
+                    <a
+                      href={lastEmailPreviewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline hover:opacity-80"
+                    >
+                      Open Email Preview ↗
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* Multi-Stage Alert Thresholds */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-3">
+                <p className="text-xs font-bold text-ink">Automated Reminder Schedule</p>
+                <p className="text-[11px] text-ink-muted">
+                  Choose the timeline milestones when LeadDesk will trigger push and fallback email alerts:
+                </p>
+
+                <div className="space-y-2.5 pt-1">
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">⏰ 2 Hours Left</span>
+                      <span className="text-[11px] text-ink-muted">Early heads-up 2 hours before scheduled time</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={remind2HoursBefore}
+                      onChange={e => setRemind2HoursBefore(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">⏰ 1 Hour Left</span>
+                      <span className="text-[11px] text-ink-muted">Reminder 1 hour before scheduled time</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={remind1HourBefore}
+                      onChange={e => setRemind1HourBefore(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">⚡ 10 Minutes Left</span>
+                      <span className="text-[11px] text-ink-muted">High-priority urgent nudge 10 minutes before</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={remind10MinBefore}
+                      onChange={e => setRemind10MinBefore(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">🎯 Exact Moment</span>
+                      <span className="text-[11px] text-ink-muted">Alert at the exact scheduled follow-up minute</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={remindAtTime}
+                      onChange={e => setRemindAtTime(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">🚨 Overdue Alert (Repeat)</span>
+                      <span className="text-[11px] text-ink-muted">If follow-up wasn&apos;t completed, remind again</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={remindOverdue}
+                      onChange={e => setRemindOverdue(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
+                    <div>
+                      <span className="text-xs font-bold text-ink block">✉️ Email Fallback Enabled</span>
+                      <span className="text-[11px] text-ink-muted">Send email along with every push notification</span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={emailNotificationsEnabled}
+                      onChange={e => setEmailNotificationsEnabled(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: APPEARANCE & DATABASE */}
           {activeTab === 'appearance' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-surface-subtle border border-border-subtle flex items-center justify-between">

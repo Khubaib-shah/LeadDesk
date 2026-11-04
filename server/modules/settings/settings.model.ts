@@ -32,6 +32,13 @@ export const settingsMongooseSchema = new Schema<SettingsDocument>(
     goingColdDays: { type: Number, default: 7 },
     theme: { type: String, enum: ['light', 'dark'], default: 'light' },
     reducedMotion: { type: Boolean, default: false },
+    pushNotificationsEnabled: { type: Boolean, default: true },
+    emailNotificationsEnabled: { type: Boolean, default: true },
+    remind2HoursBefore: { type: Boolean, default: true },
+    remind1HourBefore: { type: Boolean, default: true },
+    remind10MinBefore: { type: Boolean, default: true },
+    remindAtTime: { type: Boolean, default: true },
+    remindOverdue: { type: Boolean, default: true },
   },
   {
     timestamps: true,
@@ -74,6 +81,13 @@ export class SettingsRepository {
           goingColdDays: doc.goingColdDays || 7,
           theme: doc.theme || 'light',
           reducedMotion: doc.reducedMotion || false,
+          pushNotificationsEnabled: doc.pushNotificationsEnabled ?? true,
+          emailNotificationsEnabled: doc.emailNotificationsEnabled ?? true,
+          remind2HoursBefore: doc.remind2HoursBefore ?? true,
+          remind1HourBefore: doc.remind1HourBefore ?? true,
+          remind10MinBefore: doc.remind10MinBefore ?? true,
+          remindAtTime: doc.remindAtTime ?? true,
+          remindOverdue: doc.remindOverdue ?? true,
         };
       }
     }
@@ -105,6 +119,13 @@ export class SettingsRepository {
         goingColdDays: updated.goingColdDays || 7,
         theme: updated.theme || 'light',
         reducedMotion: updated.reducedMotion || false,
+        pushNotificationsEnabled: updated.pushNotificationsEnabled ?? true,
+        emailNotificationsEnabled: updated.emailNotificationsEnabled ?? true,
+        remind2HoursBefore: updated.remind2HoursBefore ?? true,
+        remind1HourBefore: updated.remind1HourBefore ?? true,
+        remind10MinBefore: updated.remind10MinBefore ?? true,
+        remindAtTime: updated.remindAtTime ?? true,
+        remindOverdue: updated.remindOverdue ?? true,
       };
     }
     inMemorySettings = { ...inMemorySettings, ...updates };

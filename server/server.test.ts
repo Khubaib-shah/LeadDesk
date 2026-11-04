@@ -82,3 +82,23 @@ test('SettingsRepository returns profile settings and updates cleanly', async ()
   assert.equal(updated.userRole, 'Full-Stack Consultant');
   assert.equal(updated.userEmail, 'alex@example.com');
 });
+
+test('sendFollowUpReminderEmail generates and dispatches reminder email successfully', async () => {
+  const { sendFollowUpReminderEmail } = await import('./modules/notifications/email.service');
+  const result = await sendFollowUpReminderEmail({
+    toEmail: 'test-recipient@example.com',
+    userName: 'Zubair',
+    leadId: 'lead-test-123',
+    leadName: 'Jane Smith',
+    leadPhone: '+14155552671',
+    leadPurpose: 'Custom AI Bot Consultation',
+    leadValue: 1850,
+    reminderStage: '2h_before',
+    scheduledTime: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    summary: 'Discovery call completed, requested quote follow-up.',
+  });
+
+  assert.equal(result.success, true);
+  assert.ok(result.messageId);
+});
+

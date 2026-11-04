@@ -5,7 +5,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Settings, FileText, Download, RotateCcw, Keyboard, HelpCircle } from 'lucide-react';
+import { Plus, Settings, FileText, Download, RotateCcw, Keyboard, HelpCircle, Bell } from 'lucide-react';
 import { ViewTab } from '../../types';
 
 interface TopRightClusterProps {
@@ -107,6 +107,21 @@ export const TopRightCluster: React.FC<TopRightClusterProps> = ({
                 <p className="text-xs font-bold text-ink truncate">{userName || 'Creator'}</p>
                 <p className="text-[11px] text-ink-muted truncate">{userRole || 'Lead Management'}</p>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenSettings();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium hover:bg-surface-subtle transition-colors cursor-pointer text-left"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Bell size={15} className="text-lime-deep" />
+                  <span>Push & Email Alerts</span>
+                </div>
+                <span className="w-2 h-2 rounded-full bg-lime-deep" />
+              </button>
 
               <button
                 type="button"

@@ -128,6 +128,15 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   reducedMotion?: boolean;
   lastBackupAt?: string;
+
+  // Push & Email Notification Settings
+  pushNotificationsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+  remind2HoursBefore?: boolean;
+  remind1HourBefore?: boolean;
+  remind10MinBefore?: boolean;
+  remindAtTime?: boolean;
+  remindOverdue?: boolean;
 }
 
 export type ViewTab = 'HOME' | 'LEADS' | 'PIPELINE' | 'FOLLOW-UPS' | 'ANALYTICS';

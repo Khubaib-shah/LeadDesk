@@ -23,6 +23,7 @@ import { HelpModal } from './components/help/HelpModal';
 import { CommandPalette } from './components/command/CommandPalette';
 import { FocusModeModal } from './components/followups/FocusModeModal';
 import { isFollowUpDueToday, isFollowUpOverdue } from './utils/leads';
+import { checkAndDispatchLeadReminders } from './utils/notifications';
 
 export default function App() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -126,6 +127,21 @@ export default function App() {
     setSelectedLead(null);
     window.location.hash = activeTab.toLowerCase();
   };
+
+  // Continuous multi-stage follow-up reminder check (2h, 1h, 10m, exact time, overdue)
+  // Evaluates every 25 seconds, triggering native push notifications and fallback email to userEmail
+  useEffect(() => {
+    if (leads.length === 0) return;
+
+    // Run once immediately on load/data update
+    checkAndDispatchLeadReminders(leads, settings, handleOpenLead);
+
+    const interval = setInterval(() => {
+      checkAndDispatchLeadReminders(leads, settings, handleOpenLead);
+    }, 25000);
+
+    return () => clearInterval(interval);
+  }, [leads, settings]);
 
   // Keyboard shortcut listener
   useEffect(() => {

@@ -8,6 +8,7 @@ import leadRoutes from './modules/leads/lead.routes';
 import templateRoutes from './modules/templates/template.routes';
 import settingsRoutes from './modules/settings/settings.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import notificationRoutes from './modules/notifications/notification.routes';
 import { errorHandler } from './middleware/errorHandler';
 import { isMongoConnected } from './config/db';
 
@@ -35,6 +36,7 @@ export const createApp = () => {
   app.use(['/api/templates', '/templates'], templateRoutes);
   app.use(['/api/settings', '/settings'], settingsRoutes);
   app.use(['/api/analytics', '/analytics'], analyticsRoutes);
+  app.use(['/api/notifications', '/notifications'], notificationRoutes);
 
   // Error Handling
   app.use(errorHandler);

@@ -127,6 +127,15 @@ export interface AppSettings {
   goingColdDays: number;
   theme: 'light' | 'dark';
   reducedMotion?: boolean;
+
+  // Push & Email Notification Settings
+  pushNotificationsEnabled?: boolean;
+  emailNotificationsEnabled?: boolean;
+  remind2HoursBefore?: boolean;
+  remind1HourBefore?: boolean;
+  remind10MinBefore?: boolean;
+  remindAtTime?: boolean;
+  remindOverdue?: boolean;
 }
 
 export interface LeadFilterQuery {

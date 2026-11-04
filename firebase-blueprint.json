@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "NotificationSubscription": {
+      "title": "NotificationSubscription",
+      "description": "Browser push notification subscriptions and device tokens",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique subscription or device token ID"
+        },
+        "token": {
+          "type": "string",
+          "description": "Firebase Cloud Messaging or Web Push registration token"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Web push endpoint URL"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "Device and browser user agent"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Subscription registration timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last activity timestamp"
+        }
+      },
+      "required": ["id", "createdAt"]
+    },
+    "NotificationLog": {
+      "title": "NotificationLog",
+      "description": "Audit record of scheduled and dispatched follow-up reminders",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Notification log identifier"
+        },
+        "leadId": {
+          "type": "string",
+          "description": "Associated lead ID"
+        },
+        "leadName": {
+          "type": "string",
+          "description": "Lead full name"
+        },
+        "title": {
+          "type": "string",
+          "description": "Notification alert title"
+        },
+        "body": {
+          "type": "string",
+          "description": "Notification body content"
+        },
+        "reminderStage": {
+          "type": "string",
+          "enum": ["2h_before", "1h_before", "10m_before", "at_time", "overdue"],
+          "description": "Reminder milestone window"
+        },
+        "channel": {
+          "type": "string",
+          "enum": ["push", "email", "both"],
+          "description": "Dispatch channel"
+        },
+        "emailRecipient": {
+          "type": "string",
+          "description": "Destination email address from user settings"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["sent", "pending", "failed"],
+          "description": "Dispatch status"
+        },
+        "sentAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Dispatch timestamp"
+        }
+      },
+      "required": ["id", "leadId", "title", "body", "reminderStage", "status", "sentAt"]
+    }
+  },
+  "firestore": {
+    "/notification_subscriptions/{subscriptionId}": {
+      "schema": "NotificationSubscription",
+      "description": "Device push subscription tokens"
+    },
+    "/notification_logs/{logId}": {
+      "schema": "NotificationLog",
+      "description": "Historical push and email notification events"
+    }
+  }
+}
