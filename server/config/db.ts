@@ -33,18 +33,33 @@ export const connectDatabase = async (): Promise<boolean> => {
 
   cache.promise = (async () => {
     try {
-      const dbName = process.env.MONGODB_DB_NAME || 'leaddesk';
-      console.log(`[Database] Connecting to MongoDB (db: ${dbName})...`);
+      let targetDbName = process.env.MONGODB_DB_NAME;
+      if (!targetDbName) {
+        try {
+          const parsed = new URL(mongoUri.replace('mongodb+srv://', 'http://').replace('mongodb://', 'http://'));
+          const path = parsed.pathname.replace(/^\//, '').split('?')[0];
+          if (path && path.length > 0) {
+            targetDbName = path;
+          }
+        } catch {
+          // ignore
+        }
+      }
+      if (!targetDbName) {
+        targetDbName = 'leaddesk';
+      }
+
+      console.log(`[Database] Connecting to MongoDB (target database: ${targetDbName})...`);
       await mongoose.connect(mongoUri, {
-        dbName,
+        dbName: targetDbName,
         serverSelectionTimeoutMS: 5000,
         connectTimeoutMS: 5000,
         autoIndex: true,
       });
       cache.conn = mongoose;
-      console.log('[Database] Successfully connected to MongoDB via Mongoose.');
+      console.log(`[Database] Successfully connected to MongoDB database "${targetDbName}".`);
 
-      // Auto-seed if collections are empty and ensure collections exist in DB
+      // Ensure collections exist and seed settings/templates if completely fresh
       await autoSeedDatabase();
       return true;
     } catch (error) {
@@ -59,7 +74,7 @@ export const connectDatabase = async (): Promise<boolean> => {
 
 export const isMongoConnected = (): boolean => mongoose.connection.readyState === 1;
 
-// Ensure clean state: create collections in Atlas, purge any mock leads and initialize profile settings if missing
+// Ensure collections exist and initialize default settings and templates if missing
 async function autoSeedDatabase() {
   try {
     const { LeadModel } = await import('../modules/leads/lead.model');
@@ -71,18 +86,24 @@ async function autoSeedDatabase() {
     await TemplateModel.createCollection().catch(e => console.log('[Database] templates collection ready:', (e as Error).message));
     await SettingsModel.createCollection().catch(e => console.log('[Database] settings collection ready:', (e as Error).message));
 
-    // 2. Wipe any previous mock leads and templates to guarantee a completely fresh, empty workspace
-    await LeadModel.deleteMany({});
-    await TemplateModel.deleteMany({});
-    console.log('[Database] Leads and templates cleared. Clean state ready for user.');
+    // Note: Never wipe or delete user leads on startup! Existing leads are preserved safely.
 
-    // 3. Ensure Profile Settings document exists in DB
+    // 2. Ensure Profile Settings document exists in DB
     const existingSettings = await SettingsModel.findOne({ id: 'app_settings' });
     if (!existingSettings) {
       console.log('[Database] Initializing profile settings in DB...');
       await SettingsModel.create({ id: 'app_settings', ...MOCK_SETTINGS });
     }
-    console.log('[Database] MongoDB collections ready: leads, settings, templates');
+
+    // 3. Ensure outreach templates exist if collection is empty
+    const templatesCount = await TemplateModel.countDocuments();
+    if (templatesCount === 0 && MOCK_TEMPLATES.length > 0) {
+      console.log('[Database] Seeding default outreach templates...');
+      await TemplateModel.insertMany(MOCK_TEMPLATES).catch(() => {});
+    }
+
+    const currentLeadsCount = await LeadModel.countDocuments();
+    console.log(`[Database] Collections ready. Current leads in database: ${currentLeadsCount}`);
   } catch (err) {
     console.error('[Database] Database initialization issue:', err);
   }

@@ -31,9 +31,9 @@ export interface LeadDocument extends Document, Omit<Lead, 'id'> {
 
 export const leadMongooseSchema = new Schema<LeadDocument>(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, index: true },
     fullName: { type: String, default: '' },
-    whatsappNumber: { type: String, required: true, index: true },
+    whatsappNumber: { type: String, default: '', index: true },
     altPhone: { type: String },
     email: { type: String },
     instagramHandle: { type: String },
@@ -104,6 +104,7 @@ export const leadMongooseSchema = new Schema<LeadDocument>(
   },
   {
     timestamps: false,
+    strict: false,
     toJSON: {
       virtuals: true,
       transform: (_, ret) => {
@@ -124,21 +125,66 @@ export const LeadModel = mongoose.models.Lead || mongoose.model<LeadDocument>('L
 // In-Memory Fallback State (Initialized with unified mockData)
 let inMemoryLeads: Lead[] = JSON.parse(JSON.stringify(MOCK_LEADS));
 
+// Helper to normalize doc from MongoDB
+const normalizeLeadDoc = (d: any): Lead => ({
+  ...d,
+  id: d.id || d._id?.toString() || `lead-${Date.now()}`,
+  fullName: d.fullName || d.name || 'Unnamed Lead',
+  whatsappNumber: d.whatsappNumber || d.phone || d.mobile || '',
+  altPhone: d.altPhone,
+  email: d.email || '',
+  instagramHandle: d.instagramHandle,
+  tiktokHandle: d.tiktokHandle,
+  company: d.company,
+  city: d.city,
+  country: d.country,
+  source: d.source || 'WhatsApp',
+  sourceDetail: d.sourceDetail,
+  referredBy: d.referredBy,
+  firstContactAt: d.firstContactAt || d.createdAt || new Date().toISOString(),
+  purpose: d.purpose || d.subject || 'Software project',
+  interestedIn: d.interestedIn,
+  estimatedValue: Number(d.estimatedValue || d.value || 0),
+  currency: d.currency || 'USD',
+  deadline: d.deadline,
+  summary: d.summary || '',
+  interactions: Array.isArray(d.interactions) ? d.interactions : [],
+  stage: d.stage || d.status || 'New',
+  temperature: d.temperature || 'Warm',
+  lostReason: d.lostReason,
+  wonValue: d.wonValue !== undefined ? Number(d.wonValue) : undefined,
+  closedAt: d.closedAt,
+  nextFollowUpAt: d.nextFollowUpAt,
+  followUpChannel: d.followUpChannel || 'WhatsApp',
+  followUpNote: d.followUpNote,
+  reminder: d.reminder || 'at_time',
+  lastContactedAt: d.lastContactedAt || d.updatedAt || new Date().toISOString(),
+  followUpCount: Number(d.followUpCount || 0),
+  tags: Array.isArray(d.tags) ? d.tags : [],
+  createdAt: d.createdAt || d.created_at || (d._id?.getTimestamp ? d._id.getTimestamp().toISOString() : new Date().toISOString()),
+  updatedAt: d.updatedAt || d.updated_at || new Date().toISOString(),
+  archived: Boolean(d.archived),
+  avatarColor: d.avatarColor || 'mint',
+});
+
 // Unified Repository Pattern (Swaps between real MongoDB and in-memory mock seamlessly)
 export class LeadRepository {
   static async getAll(): Promise<Lead[]> {
     if (isMongoConnected()) {
       const docs = await LeadModel.find().lean();
-      return docs.map(d => ({ ...d, id: d.id || (d as unknown as { _id: string })._id?.toString() }));
+      return docs.map(normalizeLeadDoc);
     }
     return [...inMemoryLeads];
   }
 
   static async getById(id: string): Promise<Lead | null> {
     if (isMongoConnected()) {
-      const doc = await LeadModel.findOne({ id }).lean();
+      const query = mongoose.Types.ObjectId.isValid(id)
+        ? { $or: [{ id }, { _id: id }] }
+        : { id };
+      const doc = await LeadModel.findOne(query).lean();
       if (!doc) return null;
-      return { ...doc, id: doc.id || (doc as unknown as { _id: string })._id?.toString() };
+      return normalizeLeadDoc(doc);
     }
     const found = inMemoryLeads.find(l => l.id === id);
     return found ? { ...found } : null;
@@ -200,13 +246,16 @@ export class LeadRepository {
     const cleanUpdates = { ...updates, updatedAt };
 
     if (isMongoConnected()) {
+      const query = mongoose.Types.ObjectId.isValid(id)
+        ? { $or: [{ id }, { _id: id }] }
+        : { id };
       const updated = await LeadModel.findOneAndUpdate(
-        { id },
+        query,
         { $set: cleanUpdates },
         { new: true }
       ).lean();
       if (!updated) return null;
-      return { ...updated, id: updated.id || (updated as unknown as { _id: string })._id?.toString() };
+      return normalizeLeadDoc(updated);
     }
 
     const index = inMemoryLeads.findIndex(l => l.id === id);
@@ -217,7 +266,10 @@ export class LeadRepository {
 
   static async delete(id: string): Promise<boolean> {
     if (isMongoConnected()) {
-      const res = await LeadModel.deleteOne({ id });
+      const query = mongoose.Types.ObjectId.isValid(id)
+        ? { $or: [{ id }, { _id: id }] }
+        : { id };
+      const res = await LeadModel.deleteOne(query);
       return res.deletedCount > 0;
     }
     const initialLen = inMemoryLeads.length;
