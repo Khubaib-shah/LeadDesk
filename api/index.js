@@ -32,7 +32,44 @@ var init_mockData = __esm({
       reducedMotion: false
     };
     MOCK_LEADS = [];
-    MOCK_TEMPLATES = [];
+    MOCK_TEMPLATES = [
+      {
+        id: "tpl-1",
+        title: "First Reply (WhatsApp Warm)",
+        category: "first_reply",
+        channel: "WhatsApp",
+        body: "Hi {{first_name}}! Thanks for reaching out regarding {{purpose}}. I\u2019d love to hear more about your goals and how we can work together. Are you free for a quick 10-minute chat this week?"
+      },
+      {
+        id: "tpl-2",
+        title: "48-Hour Follow-up (Friendly Check-in)",
+        category: "follow_up",
+        channel: "WhatsApp",
+        body: "Hey {{first_name}}, just following up on our conversation about {{purpose}}. Let me know if you have any questions or if you would like me to prepare a quick outline for you!"
+      },
+      {
+        id: "tpl-3",
+        title: "1-Week Nudge (Gentle Touchpoint)",
+        category: "nudge",
+        channel: "WhatsApp",
+        body: "Hi {{first_name}}, hope you\u2019re having a great week! Wanted to check in regarding {{purpose}}. No rush at all\u2014just let me know whenever you\u2019re ready to take the next step."
+      },
+      {
+        id: "tpl-4",
+        title: "Proposal Follow-up (Email)",
+        category: "proposal",
+        channel: "Email",
+        subject: "Proposal & Next Steps for {{purpose}}",
+        body: "Hi {{first_name}},\n\nI hope you had a chance to review the scope and proposal for {{purpose}}.\n\nHappy to hop on a quick call if you\u2019d like to tweak any details or discuss timelines.\n\nBest regards,\n{{my_name}}"
+      },
+      {
+        id: "tpl-5",
+        title: "Thank You & Onboarding Kickoff",
+        category: "thank_you",
+        channel: "WhatsApp",
+        body: "Awesome to have you on board, {{first_name}}! Really excited to collaborate on {{purpose}}. I will send over our kickoff onboarding details shortly."
+      }
+    ];
   }
 });
 
@@ -174,7 +211,22 @@ var init_settings_model = __esm({
         cadenceDays: { type: [Number], default: [2, 5, 10] },
         goingColdDays: { type: Number, default: 7 },
         theme: { type: String, enum: ["light", "dark"], default: "light" },
-        reducedMotion: { type: Boolean, default: false }
+        reducedMotion: { type: Boolean, default: false },
+        pushNotificationsEnabled: { type: Boolean, default: true },
+        emailNotificationsEnabled: { type: Boolean, default: true },
+        remind2HoursBefore: { type: Boolean, default: true },
+        remind1HourBefore: { type: Boolean, default: true },
+        remind10MinBefore: { type: Boolean, default: true },
+        remindAtTime: { type: Boolean, default: true },
+        remindOverdue: { type: Boolean, default: true },
+        // Custom Dynamic SMTP Settings
+        smtpHost: { type: String, default: "" },
+        smtpPort: { type: Number, default: 587 },
+        smtpUser: { type: String, default: "" },
+        smtpPass: { type: String, default: "" },
+        smtpSecure: { type: Boolean, default: false },
+        smtpFromEmail: { type: String, default: "" },
+        smtpFromName: { type: String, default: "LeadDesk CRM" }
       },
       {
         timestamps: true,
@@ -212,7 +264,14 @@ var init_settings_model = __esm({
               cadenceDays: doc.cadenceDays || [2, 5, 10],
               goingColdDays: doc.goingColdDays || 7,
               theme: doc.theme || "light",
-              reducedMotion: doc.reducedMotion || false
+              reducedMotion: doc.reducedMotion || false,
+              pushNotificationsEnabled: doc.pushNotificationsEnabled ?? true,
+              emailNotificationsEnabled: doc.emailNotificationsEnabled ?? true,
+              remind2HoursBefore: doc.remind2HoursBefore ?? true,
+              remind1HourBefore: doc.remind1HourBefore ?? true,
+              remind10MinBefore: doc.remind10MinBefore ?? true,
+              remindAtTime: doc.remindAtTime ?? true,
+              remindOverdue: doc.remindOverdue ?? true
             };
           }
         }
@@ -242,7 +301,14 @@ var init_settings_model = __esm({
             cadenceDays: updated.cadenceDays || [2, 5, 10],
             goingColdDays: updated.goingColdDays || 7,
             theme: updated.theme || "light",
-            reducedMotion: updated.reducedMotion || false
+            reducedMotion: updated.reducedMotion || false,
+            pushNotificationsEnabled: updated.pushNotificationsEnabled ?? true,
+            emailNotificationsEnabled: updated.emailNotificationsEnabled ?? true,
+            remind2HoursBefore: updated.remind2HoursBefore ?? true,
+            remind1HourBefore: updated.remind1HourBefore ?? true,
+            remind10MinBefore: updated.remind10MinBefore ?? true,
+            remindAtTime: updated.remindAtTime ?? true,
+            remindOverdue: updated.remindOverdue ?? true
           };
         }
         inMemorySettings = { ...inMemorySettings, ...updates };
@@ -253,20 +319,33 @@ var init_settings_model = __esm({
 });
 
 // server/config/db.ts
+var db_exports = {};
+__export(db_exports, {
+  connectDatabase: () => connectDatabase,
+  isMongoConnected: () => isMongoConnected
+});
 import mongoose3 from "mongoose";
 async function autoSeedDatabase() {
   try {
     const { LeadModel: LeadModel2 } = await Promise.resolve().then(() => (init_lead_model(), lead_model_exports));
     const { TemplateModel: TemplateModel2 } = await Promise.resolve().then(() => (init_template_model(), template_model_exports));
     const { SettingsModel: SettingsModel2 } = await Promise.resolve().then(() => (init_settings_model(), settings_model_exports));
-    await LeadModel2.deleteMany({});
-    await TemplateModel2.deleteMany({});
-    console.log("[Database] Leads and templates cleared. Clean state ready for user.");
-    const settingsCount = await SettingsModel2.countDocuments();
-    if (settingsCount === 0) {
+    await LeadModel2.createCollection().catch((e) => console.log("[Database] leads collection ready:", e.message));
+    await TemplateModel2.createCollection().catch((e) => console.log("[Database] templates collection ready:", e.message));
+    await SettingsModel2.createCollection().catch((e) => console.log("[Database] settings collection ready:", e.message));
+    const existingSettings = await SettingsModel2.findOne({ id: "app_settings" });
+    if (!existingSettings) {
       console.log("[Database] Initializing profile settings in DB...");
       await SettingsModel2.create({ id: "app_settings", ...MOCK_SETTINGS });
     }
+    const templatesCount = await TemplateModel2.countDocuments();
+    if (templatesCount === 0 && MOCK_TEMPLATES.length > 0) {
+      console.log("[Database] Seeding default outreach templates...");
+      await TemplateModel2.insertMany(MOCK_TEMPLATES).catch(() => {
+      });
+    }
+    const currentLeadsCount = await LeadModel2.countDocuments();
+    console.log(`[Database] Collections ready. Current leads in database: ${currentLeadsCount}`);
   } catch (err) {
     console.error("[Database] Database initialization issue:", err);
   }
@@ -291,14 +370,29 @@ var init_db = __esm({
       }
       cache.promise = (async () => {
         try {
-          console.log("[Database] Connecting to MongoDB...");
+          let targetDbName = process.env.MONGODB_DB_NAME;
+          if (!targetDbName) {
+            try {
+              const parsed = new URL(mongoUri.replace("mongodb+srv://", "http://").replace("mongodb://", "http://"));
+              const path = parsed.pathname.replace(/^\//, "").split("?")[0];
+              if (path && path.length > 0) {
+                targetDbName = path;
+              }
+            } catch {
+            }
+          }
+          if (!targetDbName) {
+            targetDbName = "leaddesk";
+          }
+          console.log(`[Database] Connecting to MongoDB (target database: ${targetDbName})...`);
           await mongoose3.connect(mongoUri, {
-            serverSelectionTimeoutMS: 3e3,
-            connectTimeoutMS: 4e3,
-            autoIndex: false
+            dbName: targetDbName,
+            serverSelectionTimeoutMS: 5e3,
+            connectTimeoutMS: 5e3,
+            autoIndex: true
           });
           cache.conn = mongoose3;
-          console.log("[Database] Successfully connected to MongoDB via Mongoose.");
+          console.log(`[Database] Successfully connected to MongoDB database "${targetDbName}".`);
           await autoSeedDatabase();
           return true;
         } catch (error) {
@@ -321,7 +415,7 @@ __export(lead_model_exports, {
   leadMongooseSchema: () => leadMongooseSchema
 });
 import mongoose4, { Schema as Schema3 } from "mongoose";
-var InteractionSchema, leadMongooseSchema, LeadModel, inMemoryLeads, LeadRepository;
+var InteractionSchema, leadMongooseSchema, LeadModel, inMemoryLeads, normalizeLeadDoc, ensureConnected, LeadRepository;
 var init_lead_model = __esm({
   "server/modules/leads/lead.model.ts"() {
     init_db();
@@ -342,9 +436,9 @@ var init_lead_model = __esm({
     );
     leadMongooseSchema = new Schema3(
       {
-        id: { type: String, required: true, unique: true, index: true },
+        id: { type: String, index: true },
         fullName: { type: String, default: "" },
-        whatsappNumber: { type: String, required: true, index: true },
+        whatsappNumber: { type: String, default: "", index: true },
         altPhone: { type: String },
         email: { type: String },
         instagramHandle: { type: String },
@@ -409,6 +503,7 @@ var init_lead_model = __esm({
       },
       {
         timestamps: false,
+        strict: false,
         toJSON: {
           virtuals: true,
           transform: (_, ret) => {
@@ -423,24 +518,96 @@ var init_lead_model = __esm({
     leadMongooseSchema.index({ archived: 1, temperature: 1 });
     LeadModel = mongoose4.models.Lead || mongoose4.model("Lead", leadMongooseSchema);
     inMemoryLeads = JSON.parse(JSON.stringify(MOCK_LEADS));
+    normalizeLeadDoc = (d) => ({
+      ...d,
+      id: d.id || d._id?.toString() || `lead-${Date.now()}`,
+      fullName: d.fullName || d.name || "Unnamed Lead",
+      whatsappNumber: d.whatsappNumber || d.phone || d.mobile || "",
+      altPhone: d.altPhone,
+      email: d.email || "",
+      instagramHandle: d.instagramHandle,
+      tiktokHandle: d.tiktokHandle,
+      company: d.company,
+      city: d.city,
+      country: d.country,
+      source: d.source || "WhatsApp",
+      sourceDetail: d.sourceDetail,
+      referredBy: d.referredBy,
+      firstContactAt: d.firstContactAt || d.createdAt || (/* @__PURE__ */ new Date()).toISOString(),
+      purpose: d.purpose || d.subject || "Software project",
+      interestedIn: d.interestedIn,
+      estimatedValue: Number(d.estimatedValue || d.value || 0),
+      currency: d.currency || "USD",
+      deadline: d.deadline,
+      summary: d.summary || "",
+      interactions: Array.isArray(d.interactions) ? d.interactions : [],
+      stage: d.stage || d.status || "New",
+      temperature: d.temperature || "Warm",
+      lostReason: d.lostReason,
+      wonValue: d.wonValue !== void 0 ? Number(d.wonValue) : void 0,
+      closedAt: d.closedAt,
+      nextFollowUpAt: d.nextFollowUpAt,
+      followUpChannel: d.followUpChannel || "WhatsApp",
+      followUpNote: d.followUpNote,
+      reminder: d.reminder || "at_time",
+      lastContactedAt: d.lastContactedAt || d.updatedAt || (/* @__PURE__ */ new Date()).toISOString(),
+      followUpCount: Number(d.followUpCount || 0),
+      tags: Array.isArray(d.tags) ? d.tags : [],
+      createdAt: d.createdAt || d.created_at || (d._id?.getTimestamp ? d._id.getTimestamp().toISOString() : (/* @__PURE__ */ new Date()).toISOString()),
+      updatedAt: d.updatedAt || d.updated_at || (/* @__PURE__ */ new Date()).toISOString(),
+      archived: Boolean(d.archived),
+      avatarColor: d.avatarColor || "mint"
+    });
+    ensureConnected = async () => {
+      if (!isMongoConnected() && process.env.MONGODB_URI) {
+        const { connectDatabase: connectDatabase2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+        await connectDatabase2();
+      }
+    };
     LeadRepository = class {
       static async getAll() {
+        await ensureConnected();
         if (isMongoConnected()) {
-          const docs = await LeadModel.find().lean();
-          return docs.map((d) => ({ ...d, id: d.id || d._id?.toString() }));
+          let docs = await LeadModel.find().lean();
+          if (docs.length === 0 && mongoose4.connection.client) {
+            try {
+              const currentDb = mongoose4.connection.db?.databaseName;
+              const alternateDb = currentDb === "leaddeck" ? "leaddesk" : "leaddeck";
+              const altCollection = mongoose4.connection.client.db(alternateDb).collection("leads");
+              const altDocs = await altCollection.find({}).toArray();
+              if (altDocs.length > 0) {
+                console.log(`[Database] Auto-migrating ${altDocs.length} leads from alternate db "${alternateDb}" to "${currentDb}"...`);
+                for (const altDoc of altDocs) {
+                  const { _id, ...cleanDoc } = altDoc;
+                  await LeadModel.updateOne({ id: cleanDoc.id }, { $set: cleanDoc }, { upsert: true });
+                }
+                docs = await LeadModel.find().lean();
+              }
+            } catch (err) {
+              console.warn("[Database] Sync check warning:", err.message);
+            }
+          }
+          const normalized = docs.map(normalizeLeadDoc);
+          if (normalized.length > 0) {
+            inMemoryLeads = [...normalized];
+          }
+          return normalized;
         }
         return [...inMemoryLeads];
       }
       static async getById(id) {
+        await ensureConnected();
         if (isMongoConnected()) {
-          const doc = await LeadModel.findOne({ id }).lean();
+          const query = mongoose4.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+          const doc = await LeadModel.findOne(query).lean();
           if (!doc) return null;
-          return { ...doc, id: doc.id || doc._id?.toString() };
+          return normalizeLeadDoc(doc);
         }
         const found = inMemoryLeads.find((l) => l.id === id);
         return found ? { ...found } : null;
       }
       static async create(leadData) {
+        await ensureConnected();
         const now = (/* @__PURE__ */ new Date()).toISOString();
         const id = leadData.id || `lead-${Date.now()}`;
         const newLead = {
@@ -483,23 +650,48 @@ var init_lead_model = __esm({
           avatarColor: leadData.avatarColor || "mint"
         };
         if (isMongoConnected()) {
-          await LeadModel.create(newLead);
-        } else {
-          inMemoryLeads.unshift(newLead);
+          await LeadModel.findOneAndUpdate(
+            { id: newLead.id },
+            { $set: newLead },
+            { upsert: true, new: true }
+          );
+          try {
+            if (mongoose4.connection.client) {
+              const currentDb = mongoose4.connection.db?.databaseName;
+              const alternateDb = currentDb === "leaddeck" ? "leaddesk" : "leaddeck";
+              await mongoose4.connection.client.db(alternateDb).collection("leads").updateOne({ id: newLead.id }, { $set: newLead }, { upsert: true });
+            }
+          } catch {
+          }
         }
+        inMemoryLeads = [newLead, ...inMemoryLeads.filter((l) => l.id !== newLead.id)];
         return newLead;
       }
       static async update(id, updates) {
+        await ensureConnected();
         const updatedAt = (/* @__PURE__ */ new Date()).toISOString();
         const cleanUpdates = { ...updates, updatedAt };
         if (isMongoConnected()) {
+          const query = mongoose4.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
           const updated = await LeadModel.findOneAndUpdate(
-            { id },
+            query,
             { $set: cleanUpdates },
             { new: true }
           ).lean();
-          if (!updated) return null;
-          return { ...updated, id: updated.id || updated._id?.toString() };
+          try {
+            if (mongoose4.connection.client) {
+              const currentDb = mongoose4.connection.db?.databaseName;
+              const alternateDb = currentDb === "leaddeck" ? "leaddesk" : "leaddeck";
+              await mongoose4.connection.client.db(alternateDb).collection("leads").updateOne(query, { $set: cleanUpdates });
+            }
+          } catch {
+          }
+          if (updated) {
+            const normalized = normalizeLeadDoc(updated);
+            inMemoryLeads = inMemoryLeads.map((l) => l.id === id ? normalized : l);
+            return normalized;
+          }
+          return null;
         }
         const index = inMemoryLeads.findIndex((l) => l.id === id);
         if (index === -1) return null;
@@ -507,22 +699,43 @@ var init_lead_model = __esm({
         return { ...inMemoryLeads[index] };
       }
       static async delete(id) {
+        await ensureConnected();
+        let deleted = false;
         if (isMongoConnected()) {
-          const res = await LeadModel.deleteOne({ id });
-          return res.deletedCount > 0;
+          const query = mongoose4.Types.ObjectId.isValid(id) ? { $or: [{ id }, { _id: id }] } : { id };
+          const res = await LeadModel.deleteOne(query);
+          try {
+            if (mongoose4.connection.client) {
+              const currentDb = mongoose4.connection.db?.databaseName;
+              const alternateDb = currentDb === "leaddeck" ? "leaddesk" : "leaddeck";
+              await mongoose4.connection.client.db(alternateDb).collection("leads").deleteOne(query);
+            }
+          } catch {
+          }
+          deleted = res.deletedCount > 0;
         }
         const initialLen = inMemoryLeads.length;
         inMemoryLeads = inMemoryLeads.filter((l) => l.id !== id);
-        return inMemoryLeads.length < initialLen;
+        return deleted || inMemoryLeads.length < initialLen;
       }
       static async bulkDelete(ids) {
+        await ensureConnected();
+        let deletedCount = 0;
         if (isMongoConnected()) {
           const res = await LeadModel.deleteMany({ id: { $in: ids } });
-          return res.deletedCount || 0;
+          try {
+            if (mongoose4.connection.client) {
+              const currentDb = mongoose4.connection.db?.databaseName;
+              const alternateDb = currentDb === "leaddeck" ? "leaddesk" : "leaddeck";
+              await mongoose4.connection.client.db(alternateDb).collection("leads").deleteMany({ id: { $in: ids } });
+            }
+          } catch {
+          }
+          deletedCount = res.deletedCount || 0;
         }
         const countBefore = inMemoryLeads.length;
         inMemoryLeads = inMemoryLeads.filter((l) => !ids.includes(l.id));
-        return countBefore - inMemoryLeads.length;
+        return deletedCount || countBefore - inMemoryLeads.length;
       }
       static async logInteraction(leadId, interaction, nextFollowUpAt) {
         const lead = await this.getById(leadId);
@@ -969,6 +1182,460 @@ var router4 = Router4();
 router4.get("/summary", getAnalyticsSummary);
 var analytics_routes_default = router4;
 
+// server/modules/notifications/notification.routes.ts
+import { Router as Router5 } from "express";
+
+// server/modules/notifications/notification.controller.ts
+init_settings_model();
+
+// server/modules/notifications/email.service.ts
+init_settings_model();
+import nodemailer from "nodemailer";
+async function createTransporter(customConfig) {
+  let config = customConfig;
+  if (!config || !config.host || !config.user) {
+    try {
+      const dbSettings = await SettingsRepository.get();
+      if (dbSettings.smtpHost && dbSettings.smtpUser) {
+        config = {
+          host: dbSettings.smtpHost,
+          port: dbSettings.smtpPort || 587,
+          user: dbSettings.smtpUser,
+          pass: dbSettings.smtpPass || "",
+          secure: dbSettings.smtpSecure || false,
+          fromEmail: dbSettings.smtpFromEmail || dbSettings.smtpUser,
+          fromName: dbSettings.smtpFromName || "LeadDesk CRM"
+        };
+      }
+    } catch {
+    }
+  }
+  if (config && config.host && config.user && config.pass) {
+    const isPort465 = Number(config.port) === 465;
+    const isSecure = config.secure !== void 0 ? Boolean(config.secure) : isPort465;
+    const transporter = nodemailer.createTransport({
+      host: config.host.trim(),
+      port: Number(config.port) || 587,
+      secure: isSecure,
+      auth: {
+        user: config.user.trim(),
+        pass: config.pass.trim()
+      }
+    });
+    const senderEmail = config.fromEmail?.trim() || config.user.trim();
+    const senderName = config.fromName?.trim() || "LeadDesk CRM";
+    const fromAddress = `"${senderName}" <${senderEmail}>`;
+    return { transporter, fromAddress, isTestAccount: false };
+  }
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const isPort465 = process.env.SMTP_PORT === "465";
+    const isSecure = process.env.SMTP_SECURE === "true" || isPort465;
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST.trim(),
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      secure: isSecure,
+      auth: {
+        user: process.env.SMTP_USER.trim(),
+        pass: process.env.SMTP_PASS.trim()
+      }
+    });
+    const senderEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+    const fromAddress = `"LeadDesk CRM" <${senderEmail}>`;
+    return { transporter, fromAddress, isTestAccount: false };
+  }
+  try {
+    const testAccount = await nodemailer.createTestAccount();
+    const transporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass
+      }
+    });
+    return {
+      transporter,
+      fromAddress: `"LeadDesk CRM" <${testAccount.user}>`,
+      isTestAccount: true
+    };
+  } catch {
+    const transporter = nodemailer.createTransport({ jsonTransport: true });
+    return {
+      transporter,
+      fromAddress: `"LeadDesk CRM" <notifications@leaddesk.app>`,
+      isTestAccount: true
+    };
+  }
+}
+async function verifySmtpConnection(config) {
+  try {
+    const { transporter } = await createTransporter(config);
+    await transporter.verify();
+    return {
+      success: true,
+      message: "SMTP connection verified successfully! Server is ready to deliver emails."
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message || "Failed to connect to SMTP server. Please verify host, port, user and pass."
+    };
+  }
+}
+async function sendFollowUpReminderEmail(params) {
+  try {
+    const { transporter, fromAddress, isTestAccount } = await createTransporter(params.smtpConfig);
+    const stageBadgeLabels = {
+      "2h_before": "2 Hours Left",
+      "1h_before": "1 Hour Left",
+      "10m_before": "10 Minutes Left",
+      "at_time": "Due Now",
+      "overdue": "Overdue"
+    };
+    const stageBadgeStyles = {
+      "2h_before": { bg: "#F1F5F9", text: "#334155", border: "#CBD5E1" },
+      "1h_before": { bg: "#F1F5F9", text: "#334155", border: "#CBD5E1" },
+      "10m_before": { bg: "#FEF3C7", text: "#92400E", border: "#FDE68A" },
+      "at_time": { bg: "#ECFDF5", text: "#065F46", border: "#A7F3D0" },
+      "overdue": { bg: "#FFF1F2", text: "#9F1239", border: "#FECDD3" }
+    };
+    const badgeLabel = stageBadgeLabels[params.reminderStage] || "Reminder";
+    const badgeStyle = stageBadgeStyles[params.reminderStage] || { bg: "#F1F5F9", text: "#334155", border: "#E2E8F0" };
+    const waPhoneClean = params.leadPhone.replace(/[^0-9]/g, "");
+    const waUrl = waPhoneClean ? `https://wa.me/${waPhoneClean}` : "";
+    const cleanAppUrl = params.appUrl || "https://ais-dev-oebeqy2d7novbqcuvqgepd-65285170260.asia-southeast1.run.app";
+    const leadLink = `${cleanAppUrl}#lead/${params.leadId}`;
+    const formattedTime = new Date(params.scheduledTime).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    });
+    const subjectLine = `${badgeLabel}: Follow-up with ${params.leadName} (${formattedTime})`;
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subjectLine}</title>
+</head>
+<body style="margin: 0; padding: 32px 16px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0F172A;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8FAFC;">
+    <tr>
+      <td align="center">
+        <!-- Main Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); overflow: hidden;">
+          
+          <!-- Top Brand Bar -->
+          <tr>
+            <td style="padding: 24px 28px 16px 28px; border-bottom: 1px solid #F1F5F9;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="left">
+                    <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #0F172A; text-transform: uppercase;">LeadDesk</span>
+                  </td>
+                  <td align="right">
+                    <span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background-color: ${badgeStyle.bg}; color: ${badgeStyle.text}; border: 1px solid ${badgeStyle.border}; border-radius: 6px;">
+                      ${badgeLabel}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Heading Content -->
+          <tr>
+            <td style="padding: 28px 28px 20px 28px;">
+              <h1 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #0F172A; line-height: 1.35; letter-spacing: -0.01em;">
+                Follow-up with ${params.leadName}
+              </h1>
+              <p style="margin: 0; font-size: 13px; color: #64748B; line-height: 1.5;">
+                Scheduled for <strong style="color: #0F172A;">${formattedTime}</strong>.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Details Table -->
+          <tr>
+            <td style="padding: 0 28px 24px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; width: 35%;">
+                    Contact
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #0F172A;">
+                    ${params.leadName}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Phone / WhatsApp
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-family: monospace;">
+                    ${params.leadPhone || "\u2014"}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Objective
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #334155;">
+                    ${params.leadPurpose || "Follow-up consultation"}
+                  </td>
+                </tr>
+
+                ${params.leadValue ? `<tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Estimated Value
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #0F172A;">
+                    $${params.leadValue.toLocaleString()}
+                  </td>
+                </tr>` : ""}
+
+                ${params.summary ? `<tr>
+                  <td colspan="2" style="padding: 12px 16px; font-size: 12px; color: #475569; line-height: 1.5; font-style: italic;">
+                    &ldquo;${params.summary}&rdquo;
+                  </td>
+                </tr>` : ""}
+              </table>
+            </td>
+          </tr>
+
+          <!-- Action Buttons -->
+          <tr>
+            <td style="padding: 0 28px 28px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding-right: 10px;">
+                    <a href="${leadLink}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #FFFFFF; font-size: 12px; font-weight: 600; text-decoration: none; padding: 10px 18px; border-radius: 6px; text-align: center;">
+                      Open in CRM &rarr;
+                    </a>
+                  </td>
+                  ${waUrl ? `<td>
+                    <a href="${waUrl}" target="_blank" style="display: inline-block; background-color: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1; font-size: 12px; font-weight: 600; text-decoration: none; padding: 9px 16px; border-radius: 6px; text-align: center;">
+                      Chat on WhatsApp
+                    </a>
+                  </td>` : ""}
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 18px 28px 24px 28px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; font-size: 11px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 4px 0;">This reminder was sent to <strong>${params.toEmail}</strong> from your LeadDesk Personal CRM.</p>
+              <p style="margin: 0;">Manage alert cadences or configure custom SMTP in <strong>Settings &gt; Push &amp; Email Alerts</strong>.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
+    const plainText = `${badgeLabel}: Follow-up with ${params.leadName}
+
+Scheduled for ${formattedTime}
+Phone: ${params.leadPhone}
+Objective: ${params.leadPurpose || "Follow-up"}
+${params.leadValue ? `Value: $${params.leadValue}
+` : ""}
+Open in CRM: ${leadLink}
+WhatsApp: ${waUrl}`;
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      to: params.toEmail,
+      subject: subjectLine,
+      html: htmlContent,
+      text: plainText
+    });
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    console.log(`[Email Service] Delivered reminder email to ${params.toEmail}. Message ID: ${info.messageId}`);
+    if (previewUrl) {
+      console.log(`[Email Service] Preview URL: ${previewUrl}`);
+    }
+    return {
+      success: true,
+      messageId: info.messageId,
+      previewUrl,
+      isTestAccount
+    };
+  } catch (err) {
+    console.error("[Email Service] Failed to send reminder email:", err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+}
+
+// server/modules/notifications/notification.controller.ts
+var inMemoryLogs = [];
+var recentAlertsCache = /* @__PURE__ */ new Map();
+var dispatchNotification = async (req, res, next) => {
+  try {
+    const {
+      leadId,
+      leadName,
+      leadPhone,
+      leadPurpose,
+      leadValue,
+      reminderStage,
+      scheduledTime,
+      summary,
+      force = false
+    } = req.body;
+    if (!leadId || !reminderStage) {
+      res.status(400).json({ success: false, message: "leadId and reminderStage are required." });
+      return;
+    }
+    const dedupKey = `${leadId}_${reminderStage}`;
+    const now = Date.now();
+    const lastSent = recentAlertsCache.get(dedupKey);
+    if (!force && lastSent && now - lastSent < 60 * 60 * 1e3) {
+      res.json({
+        success: true,
+        skipped: true,
+        message: "Notification already dispatched recently for this milestone."
+      });
+      return;
+    }
+    const settings = await SettingsRepository.get();
+    const toEmail = req.body.toEmail || settings.userEmail;
+    let emailResult = { success: false };
+    if (toEmail && toEmail.trim() !== "" && toEmail.includes("@")) {
+      emailResult = await sendFollowUpReminderEmail({
+        toEmail: toEmail.trim(),
+        userName: settings.userName,
+        leadId,
+        leadName: leadName || "Lead Contact",
+        leadPhone: leadPhone || "",
+        leadPurpose,
+        leadValue,
+        reminderStage,
+        scheduledTime: scheduledTime || (/* @__PURE__ */ new Date()).toISOString(),
+        summary
+      });
+    }
+    recentAlertsCache.set(dedupKey, now);
+    const logItem = {
+      id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      leadId,
+      leadName: leadName || "Lead",
+      reminderStage,
+      channels: toEmail ? ["push", "email"] : ["push"],
+      recipientEmail: toEmail,
+      status: emailResult.success || !toEmail ? "sent" : "failed",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      previewUrl: emailResult.previewUrl
+    };
+    inMemoryLogs.unshift(logItem);
+    if (inMemoryLogs.length > 50) inMemoryLogs.pop();
+    res.json({
+      success: true,
+      data: {
+        push: true,
+        email: emailResult.success,
+        recipientEmail: toEmail || null,
+        previewUrl: emailResult.previewUrl || null,
+        reminderStage
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+var verifySmtp = async (req, res, next) => {
+  try {
+    const config = req.body;
+    if (!config.host || !config.user || !config.pass) {
+      res.status(400).json({
+        success: false,
+        message: "Please provide SMTP host, username, and password."
+      });
+      return;
+    }
+    const result = await verifySmtpConnection(config);
+    if (result.success) {
+      res.json({ success: true, message: result.message });
+    } else {
+      res.status(400).json({ success: false, message: result.message });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+var sendTestEmail = async (req, res, next) => {
+  try {
+    const settings = await SettingsRepository.get();
+    const toEmail = req.body.toEmail || req.body.email || settings.userEmail;
+    if (!toEmail || !toEmail.trim() || !toEmail.includes("@")) {
+      res.status(400).json({
+        success: false,
+        message: "No recipient email found. Please enter your email in Settings > Profile & Identity or in the test recipient field."
+      });
+      return;
+    }
+    const smtpConfig = req.body.smtpConfig && req.body.smtpConfig.host ? req.body.smtpConfig : void 0;
+    const result = await sendFollowUpReminderEmail({
+      toEmail: toEmail.trim(),
+      userName: settings.userName || "Creator",
+      leadId: "test-lead-001",
+      leadName: "Alex Rivera (Demo Client)",
+      leadPhone: "+1 415 555 2671",
+      leadPurpose: "Software project ($5,000 MVP)",
+      leadValue: 5e3,
+      reminderStage: "1h_before",
+      scheduledTime: new Date(Date.now() + 60 * 60 * 1e3).toISOString(),
+      summary: "Discussing Next.js SaaS migration and contract signing.",
+      smtpConfig
+    });
+    if (result.success) {
+      res.json({
+        success: true,
+        message: result.isTestAccount ? `Test reminder generated for ${toEmail} (Ethereal test preview created below).` : `Test reminder delivered to ${toEmail} via custom SMTP!`,
+        previewUrl: result.previewUrl || null,
+        recipient: toEmail,
+        isTestAccount: result.isTestAccount
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: `Email sending failed: ${result.error}`
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+var getNotificationLogs = async (_req, res, next) => {
+  try {
+    res.json({
+      success: true,
+      count: inMemoryLogs.length,
+      data: inMemoryLogs
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// server/modules/notifications/notification.routes.ts
+var router5 = Router5();
+router5.post("/dispatch", dispatchNotification);
+router5.post("/test-email", sendTestEmail);
+router5.post("/verify-smtp", verifySmtp);
+router5.get("/history", getNotificationLogs);
+var notification_routes_default = router5;
+
 // server/middleware/errorHandler.ts
 var errorHandler = (err, _req, res, _next) => {
   const statusCode = err.statusCode || 500;
@@ -1001,11 +1668,12 @@ var createApp = () => {
   app2.use(["/api/templates", "/templates"], template_routes_default);
   app2.use(["/api/settings", "/settings"], settings_routes_default);
   app2.use(["/api/analytics", "/analytics"], analytics_routes_default);
+  app2.use(["/api/notifications", "/notifications"], notification_routes_default);
   app2.use(errorHandler);
   return app2;
 };
 
-// api/index.ts
+// api/_serverless.ts
 init_db();
 var app = createApp();
 var dbPromise = null;

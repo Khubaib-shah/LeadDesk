@@ -137,6 +137,15 @@ export interface AppSettings {
   remind10MinBefore?: boolean;
   remindAtTime?: boolean;
   remindOverdue?: boolean;
+
+  // Dynamic Custom SMTP Server Configuration
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPass?: string;
+  smtpSecure?: boolean;
+  smtpFromEmail?: string;
+  smtpFromName?: string;
 }
 
 export type ViewTab = 'HOME' | 'LEADS' | 'PIPELINE' | 'FOLLOW-UPS' | 'ANALYTICS';

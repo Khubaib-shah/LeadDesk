@@ -4,6 +4,17 @@
  */
 
 import nodemailer, { type Transporter } from 'nodemailer';
+import { SettingsRepository } from '../settings/settings.model';
+
+export interface SmtpConfig {
+  host?: string;
+  port?: number;
+  user?: string;
+  pass?: string;
+  secure?: boolean;
+  fromEmail?: string;
+  fromName?: string;
+}
 
 export interface SendReminderEmailParams {
   toEmail: string;
@@ -17,31 +28,84 @@ export interface SendReminderEmailParams {
   scheduledTime: string;
   summary?: string;
   appUrl?: string;
+  smtpConfig?: SmtpConfig;
 }
 
-let cachedTransporter: Transporter | null = null;
-
-async function getTransporter(): Promise<Transporter> {
-  if (cachedTransporter) return cachedTransporter;
-
-  // Check if custom SMTP is defined in environment
-  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    cachedTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-    return cachedTransporter;
+/**
+ * Build a Nodemailer Transporter using custom SMTP settings, environment vars, or Ethereal test fallback
+ */
+export async function createTransporter(customConfig?: SmtpConfig): Promise<{
+  transporter: Transporter;
+  fromAddress: string;
+  isTestAccount: boolean;
+}> {
+  // 1. Resolve settings from parameter or database
+  let config = customConfig;
+  if (!config || !config.host || !config.user) {
+    try {
+      const dbSettings = await SettingsRepository.get();
+      if (dbSettings.smtpHost && dbSettings.smtpUser) {
+        config = {
+          host: dbSettings.smtpHost,
+          port: dbSettings.smtpPort || 587,
+          user: dbSettings.smtpUser,
+          pass: dbSettings.smtpPass || '',
+          secure: dbSettings.smtpSecure || false,
+          fromEmail: dbSettings.smtpFromEmail || dbSettings.smtpUser,
+          fromName: dbSettings.smtpFromName || 'LeadDesk CRM',
+        };
+      }
+    } catch {
+      // ignore
+    }
   }
 
-  // Create an automatic Ethereal test account for verified real email delivery & previewing
+  // 2. Custom SMTP from Settings
+  if (config && config.host && config.user && config.pass) {
+    const isPort465 = Number(config.port) === 465;
+    const isSecure = config.secure !== undefined ? Boolean(config.secure) : isPort465;
+
+    const transporter = nodemailer.createTransport({
+      host: config.host.trim(),
+      port: Number(config.port) || 587,
+      secure: isSecure,
+      auth: {
+        user: config.user.trim(),
+        pass: config.pass.trim(),
+      },
+    });
+
+    const senderEmail = config.fromEmail?.trim() || config.user.trim();
+    const senderName = config.fromName?.trim() || 'LeadDesk CRM';
+    const fromAddress = `"${senderName}" <${senderEmail}>`;
+
+    return { transporter, fromAddress, isTestAccount: false };
+  }
+
+  // 3. Fallback to Environment Variables
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    const isPort465 = process.env.SMTP_PORT === '465';
+    const isSecure = process.env.SMTP_SECURE === 'true' || isPort465;
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST.trim(),
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
+      secure: isSecure,
+      auth: {
+        user: process.env.SMTP_USER.trim(),
+        pass: process.env.SMTP_PASS.trim(),
+      },
+    });
+
+    const senderEmail = process.env.SMTP_FROM || process.env.SMTP_USER;
+    const fromAddress = `"LeadDesk CRM" <${senderEmail}>`;
+    return { transporter, fromAddress, isTestAccount: false };
+  }
+
+  // 4. Fallback to Ethereal Test Account (generates web-preview link)
   try {
     const testAccount = await nodemailer.createTestAccount();
-    cachedTransporter = nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
@@ -50,46 +114,78 @@ async function getTransporter(): Promise<Transporter> {
         pass: testAccount.pass,
       },
     });
-    console.log(`[Email Service] Initialized notification transporter (Test account: ${testAccount.user})`);
-    return cachedTransporter;
-  } catch (err) {
-    console.warn('[Email Service] Failed to create test SMTP transporter, using json fallback:', err);
-    // JSON transport fallback for environments without internet SMTP access
-    cachedTransporter = nodemailer.createTransport({
-      jsonTransport: true,
-    });
-    return cachedTransporter;
+    return {
+      transporter,
+      fromAddress: `"LeadDesk CRM" <${testAccount.user}>`,
+      isTestAccount: true,
+    };
+  } catch {
+    // 5. Offline JSON transporter
+    const transporter = nodemailer.createTransport({ jsonTransport: true });
+    return {
+      transporter,
+      fromAddress: `"LeadDesk CRM" <notifications@leaddesk.app>`,
+      isTestAccount: true,
+    };
   }
 }
 
+/**
+ * Test SMTP connection and credentials
+ */
+export async function verifySmtpConnection(config: SmtpConfig): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const { transporter } = await createTransporter(config);
+    await transporter.verify();
+    return {
+      success: true,
+      message: 'SMTP connection verified successfully! Server is ready to deliver emails.',
+    };
+  } catch (err) {
+    return {
+      success: false,
+      message: (err as Error).message || 'Failed to connect to SMTP server. Please verify host, port, user and pass.',
+    };
+  }
+}
+
+/**
+ * Dispatches a minimal, clean, professional follow-up reminder email
+ */
 export async function sendFollowUpReminderEmail(params: SendReminderEmailParams): Promise<{
   success: boolean;
   messageId?: string;
   previewUrl?: string | false;
   error?: string;
+  isTestAccount?: boolean;
 }> {
   try {
-    const transporter = await getTransporter();
+    const { transporter, fromAddress, isTestAccount } = await createTransporter(params.smtpConfig);
 
-    const stageTitles: Record<string, string> = {
-      '2h_before': '⏰ Follow-up in 2 Hours',
-      '1h_before': '⏰ Follow-up in 1 Hour',
-      '10m_before': '⚡ Urgent: Follow-up in 10 Minutes',
-      'at_time': '🎯 Scheduled Follow-up Due Right Now',
-      'overdue': '🚨 Overdue: Missed Follow-up Reminder',
+    const stageBadgeLabels: Record<string, string> = {
+      '2h_before': '2 Hours Left',
+      '1h_before': '1 Hour Left',
+      '10m_before': '10 Minutes Left',
+      'at_time': 'Due Now',
+      'overdue': 'Overdue',
     };
 
-    const stageColors: Record<string, string> = {
-      '2h_before': '#A9C8FA',
-      '1h_before': '#C9C3F5',
-      '10m_before': '#F5B544',
-      'at_time': '#D4F56B',
-      'overdue': '#E5484D',
+    const stageBadgeStyles: Record<string, { bg: string; text: string; border: string }> = {
+      '2h_before': { bg: '#F1F5F9', text: '#334155', border: '#CBD5E1' },
+      '1h_before': { bg: '#F1F5F9', text: '#334155', border: '#CBD5E1' },
+      '10m_before': { bg: '#FEF3C7', text: '#92400E', border: '#FDE68A' },
+      'at_time': { bg: '#ECFDF5', text: '#065F46', border: '#A7F3D0' },
+      'overdue': { bg: '#FFF1F2', text: '#9F1239', border: '#FECDD3' },
     };
 
-    const stageTitle = stageTitles[params.reminderStage] || 'Follow-up Reminder';
-    const accentColor = stageColors[params.reminderStage] || '#D4F56B';
-    const waUrl = `https://wa.me/${params.leadPhone.replace(/[^0-9]/g, '')}`;
+    const badgeLabel = stageBadgeLabels[params.reminderStage] || 'Reminder';
+    const badgeStyle = stageBadgeStyles[params.reminderStage] || { bg: '#F1F5F9', text: '#334155', border: '#E2E8F0' };
+
+    const waPhoneClean = params.leadPhone.replace(/[^0-9]/g, '');
+    const waUrl = waPhoneClean ? `https://wa.me/${waPhoneClean}` : '';
     const cleanAppUrl = params.appUrl || 'https://ais-dev-oebeqy2d7novbqcuvqgepd-65285170260.asia-southeast1.run.app';
     const leadLink = `${cleanAppUrl}#lead/${params.leadId}`;
 
@@ -99,76 +195,172 @@ export async function sendFollowUpReminderEmail(params: SendReminderEmailParams)
       hour12: true,
     });
 
+    const subjectLine = `${badgeLabel}: Follow-up with ${params.leadName} (${formattedTime})`;
+
+    // Minimal, ultra-clean, professional executive layout
     const htmlContent = `
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F2F4F4; margin: 0; padding: 24px; color: #14161A; }
-    .card { max-width: 540px; margin: 0 auto; background: #FFFFFF; border-radius: 20px; border: 1px solid #E3E6E8; padding: 32px; box-shadow: 0 4px 20px rgba(20,22,26,0.06); }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; border-bottom: 1px solid #F3F5F6; padding-bottom: 16px; }
-    .badge { display: inline-block; padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 700; background-color: ${accentColor}; color: #14161A; text-transform: uppercase; letter-spacing: 0.05em; }
-    .lead-box { background: #F3F5F6; border-radius: 14px; padding: 18px; margin: 20px 0; }
-    .lead-name { font-size: 20px; font-weight: 800; margin: 0 0 6px 0; color: #14161A; }
-    .lead-meta { font-size: 13px; color: #4A515B; margin: 4px 0; }
-    .cta-button { display: inline-block; background-color: #D4F56B; color: #14161A; font-weight: 800; font-size: 13px; padding: 12px 24px; border-radius: 12px; text-decoration: none; margin-top: 16px; text-align: center; }
-    .wa-button { display: inline-block; background-color: #25D366; color: #FFFFFF; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 12px; text-decoration: none; margin-left: 10px; }
-    .footer { font-size: 11px; color: #636B76; text-align: center; margin-top: 24px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subjectLine}</title>
 </head>
-<body>
-  <div class="card">
-    <div class="header">
-      <span style="font-weight: 900; font-size: 15px; letter-spacing: 0.05em;">LEADDESK CRM</span>
-      <span class="badge">${stageTitle}</span>
-    </div>
+<body style="margin: 0; padding: 32px 16px; background-color: #F8FAFC; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: #0F172A;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8FAFC;">
+    <tr>
+      <td align="center">
+        <!-- Main Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width: 520px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04); overflow: hidden;">
+          
+          <!-- Top Brand Bar -->
+          <tr>
+            <td style="padding: 24px 28px 16px 28px; border-bottom: 1px solid #F1F5F9;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td align="left">
+                    <span style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; color: #0F172A; text-transform: uppercase;">LeadDesk</span>
+                  </td>
+                  <td align="right">
+                    <span style="display: inline-block; padding: 4px 10px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; background-color: ${badgeStyle.bg}; color: ${badgeStyle.text}; border: 1px solid ${badgeStyle.border}; border-radius: 6px;">
+                      ${badgeLabel}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
 
-    <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 8px 0;">Don't let this lead slip away!</h2>
-    <p style="font-size: 14px; color: #4A515B; margin: 0 0 16px 0;">
-      Hi ${params.userName || 'Creator'}, you have a scheduled follow-up due at <strong>${formattedTime}</strong>.
-    </p>
+          <!-- Heading Content -->
+          <tr>
+            <td style="padding: 28px 28px 20px 28px;">
+              <h1 style="margin: 0 0 8px 0; font-size: 18px; font-weight: 600; color: #0F172A; line-height: 1.35; letter-spacing: -0.01em;">
+                Follow-up with ${params.leadName}
+              </h1>
+              <p style="margin: 0; font-size: 13px; color: #64748B; line-height: 1.5;">
+                Scheduled for <strong style="color: #0F172A;">${formattedTime}</strong>.
+              </p>
+            </td>
+          </tr>
 
-    <div class="lead-box">
-      <div class="lead-name">${params.leadName}</div>
-      <div class="lead-meta">📱 <strong>WhatsApp:</strong> ${params.leadPhone}</div>
-      <div class="lead-meta">🎯 <strong>Intent / Purpose:</strong> ${params.leadPurpose || 'Software inquiry'}</div>
-      ${params.leadValue ? `<div class="lead-meta">💰 <strong>Estimated Value:</strong> $${params.leadValue.toLocaleString()}</div>` : ''}
-      ${params.summary ? `<div class="lead-meta" style="margin-top: 10px; border-top: 1px dashed #D7DBDF; padding-top: 8px;">📝 <em>"${params.summary}"</em></div>` : ''}
-    </div>
+          <!-- Details Table -->
+          <tr>
+            <td style="padding: 0 28px 24px 28px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;">
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B; width: 35%;">
+                    Contact
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #0F172A;">
+                    ${params.leadName}
+                  </td>
+                </tr>
 
-    <div style="margin-top: 20px;">
-      <a href="${leadLink}" class="cta-button" target="_blank">Open in LeadDesk</a>
-      ${params.leadPhone ? `<a href="${waUrl}" class="wa-button" target="_blank">Chat on WhatsApp</a>` : ''}
-    </div>
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Phone / WhatsApp
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #0F172A; font-family: monospace;">
+                    ${params.leadPhone || '—'}
+                  </td>
+                </tr>
 
-    <div class="footer">
-      This automated alert was sent from your LeadDesk Personal CRM settings to <strong>${params.toEmail}</strong>.<br/>
-      You can manage your notification thresholds in Profile &gt; Settings.
-    </div>
-  </div>
+                <tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Objective
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; color: #334155;">
+                    ${params.leadPurpose || 'Follow-up consultation'}
+                  </td>
+                </tr>
+
+                ${
+                  params.leadValue
+                    ? `<tr>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #64748B;">
+                    Estimated Value
+                  </td>
+                  <td style="padding: 12px 16px; border-bottom: 1px solid #E2E8F0; font-size: 13px; font-weight: 600; color: #0F172A;">
+                    $${params.leadValue.toLocaleString()}
+                  </td>
+                </tr>`
+                    : ''
+                }
+
+                ${
+                  params.summary
+                    ? `<tr>
+                  <td colspan="2" style="padding: 12px 16px; font-size: 12px; color: #475569; line-height: 1.5; font-style: italic;">
+                    &ldquo;${params.summary}&rdquo;
+                  </td>
+                </tr>`
+                    : ''
+                }
+              </table>
+            </td>
+          </tr>
+
+          <!-- Action Buttons -->
+          <tr>
+            <td style="padding: 0 28px 28px 28px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                  <td style="padding-right: 10px;">
+                    <a href="${leadLink}" target="_blank" style="display: inline-block; background-color: #0F172A; color: #FFFFFF; font-size: 12px; font-weight: 600; text-decoration: none; padding: 10px 18px; border-radius: 6px; text-align: center;">
+                      Open in CRM &rarr;
+                    </a>
+                  </td>
+                  ${
+                    waUrl
+                      ? `<td>
+                    <a href="${waUrl}" target="_blank" style="display: inline-block; background-color: #FFFFFF; color: #0F172A; border: 1px solid #CBD5E1; font-size: 12px; font-weight: 600; text-decoration: none; padding: 9px 16px; border-radius: 6px; text-align: center;">
+                      Chat on WhatsApp
+                    </a>
+                  </td>`
+                      : ''
+                  }
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 18px 28px 24px 28px; background-color: #F8FAFC; border-top: 1px solid #F1F5F9; font-size: 11px; color: #64748B; line-height: 1.5;">
+              <p style="margin: 0 0 4px 0;">This reminder was sent to <strong>${params.toEmail}</strong> from your LeadDesk Personal CRM.</p>
+              <p style="margin: 0;">Manage alert cadences or configure custom SMTP in <strong>Settings &gt; Push &amp; Email Alerts</strong>.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>
-    `;
+    `.trim();
+
+    const plainText = `${badgeLabel}: Follow-up with ${params.leadName}\n\nScheduled for ${formattedTime}\nPhone: ${params.leadPhone}\nObjective: ${params.leadPurpose || 'Follow-up'}\n${params.leadValue ? `Value: $${params.leadValue}\n` : ''}\nOpen in CRM: ${leadLink}\nWhatsApp: ${waUrl}`;
 
     const info = await transporter.sendMail({
-      from: `"LeadDesk CRM" <notifications@leaddesk.app>`,
+      from: fromAddress,
       to: params.toEmail,
-      subject: `${stageTitle}: ${params.leadName} (${formattedTime})`,
+      subject: subjectLine,
       html: htmlContent,
-      text: `${stageTitle}\n\nHi ${params.userName || 'Creator'},\n\nYou have a scheduled follow-up with ${params.leadName} (${params.leadPhone}) at ${formattedTime}.\nPurpose: ${params.leadPurpose || 'Software inquiry'}\n\nOpen Lead: ${leadLink}\nWhatsApp: ${waUrl}`,
+      text: plainText,
     });
 
     const previewUrl = nodemailer.getTestMessageUrl(info);
-    console.log(`[Email Service] Sent follow-up email to ${params.toEmail}. Message ID: ${info.messageId}`);
+    console.log(`[Email Service] Delivered reminder email to ${params.toEmail}. Message ID: ${info.messageId}`);
     if (previewUrl) {
-      console.log(`[Email Service] Ethereal email preview URL: ${previewUrl}`);
+      console.log(`[Email Service] Preview URL: ${previewUrl}`);
     }
 
     return {
       success: true,
       messageId: info.messageId,
       previewUrl,
+      isTestAccount,
     };
   } catch (err) {
     console.error('[Email Service] Failed to send reminder email:', err);

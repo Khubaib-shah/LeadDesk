@@ -5,7 +5,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { SettingsRepository } from '../settings/settings.model';
-import { sendFollowUpReminderEmail } from './email.service';
+import { sendFollowUpReminderEmail, verifySmtpConnection, type SmtpConfig } from './email.service';
 
 interface NotificationLogItem {
   id: string;
@@ -114,6 +114,32 @@ export const dispatchNotification = async (
   }
 };
 
+export const verifySmtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const config: SmtpConfig = req.body;
+    if (!config.host || !config.user || !config.pass) {
+      res.status(400).json({
+        success: false,
+        message: 'Please provide SMTP host, username, and password.',
+      });
+      return;
+    }
+
+    const result = await verifySmtpConnection(config);
+    if (result.success) {
+      res.json({ success: true, message: result.message });
+    } else {
+      res.status(400).json({ success: false, message: result.message });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const sendTestEmail = async (
   req: Request,
   res: Response,
@@ -126,10 +152,15 @@ export const sendTestEmail = async (
     if (!toEmail || !toEmail.trim() || !toEmail.includes('@')) {
       res.status(400).json({
         success: false,
-        message: 'No email address found. Please enter your email in Settings > Profile or in the notification test field.',
+        message: 'No recipient email found. Please enter your email in Settings > Profile & Identity or in the test recipient field.',
       });
       return;
     }
+
+    // Allow testing entered SMTP config from request or fallback to saved database settings
+    const smtpConfig: SmtpConfig | undefined = req.body.smtpConfig && req.body.smtpConfig.host
+      ? req.body.smtpConfig
+      : undefined;
 
     const result = await sendFollowUpReminderEmail({
       toEmail: toEmail.trim(),
@@ -142,14 +173,18 @@ export const sendTestEmail = async (
       reminderStage: '1h_before',
       scheduledTime: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       summary: 'Discussing Next.js SaaS migration and contract signing.',
+      smtpConfig,
     });
 
     if (result.success) {
       res.json({
         success: true,
-        message: `Test email successfully sent to ${toEmail}!`,
+        message: result.isTestAccount
+          ? `Test reminder generated for ${toEmail} (Ethereal test preview created below).`
+          : `Test reminder delivered to ${toEmail} via custom SMTP!`,
         previewUrl: result.previewUrl || null,
         recipient: toEmail,
+        isTestAccount: result.isTestAccount,
       });
     } else {
       res.status(500).json({

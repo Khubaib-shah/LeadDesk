@@ -25,6 +25,15 @@ import {
   Check,
   AlertTriangle,
   Loader2,
+  Clock,
+  Timer,
+  Zap,
+  Target,
+  Server,
+  Key,
+  Eye,
+  EyeOff,
+  Lock,
 } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { CustomSelect } from '../common/Select';
@@ -92,6 +101,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [lastEmailPreviewUrl, setLastEmailPreviewUrl] = useState<string | null>(null);
 
+  // Dynamic Custom SMTP Server
+  const [smtpHost, setSmtpHost] = useState(settings.smtpHost || '');
+  const [smtpPort, setSmtpPort] = useState<number | string>(settings.smtpPort || 587);
+  const [smtpUser, setSmtpUser] = useState(settings.smtpUser || '');
+  const [smtpPass, setSmtpPass] = useState(settings.smtpPass || '');
+  const [smtpSecure, setSmtpSecure] = useState(Boolean(settings.smtpSecure));
+  const [smtpFromEmail, setSmtpFromEmail] = useState(settings.smtpFromEmail || '');
+  const [smtpFromName, setSmtpFromName] = useState(settings.smtpFromName || 'LeadDesk CRM');
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [isVerifyingSmtp, setIsVerifyingSmtp] = useState(false);
+  const [smtpVerificationMsg, setSmtpVerificationMsg] = useState<{ success: boolean; text: string } | null>(null);
+
   // Sync state whenever settings change
   useEffect(() => {
     setUserName(settings.userName || '');
@@ -117,6 +138,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setRemind10MinBefore(settings.remind10MinBefore ?? true);
     setRemindAtTime(settings.remindAtTime ?? true);
     setRemindOverdue(settings.remindOverdue ?? true);
+    setSmtpHost(settings.smtpHost || '');
+    setSmtpPort(settings.smtpPort || 587);
+    setSmtpUser(settings.smtpUser || '');
+    setSmtpPass(settings.smtpPass || '');
+    setSmtpSecure(Boolean(settings.smtpSecure));
+    setSmtpFromEmail(settings.smtpFromEmail || '');
+    setSmtpFromName(settings.smtpFromName || 'LeadDesk CRM');
     if (typeof Notification !== 'undefined') {
       setPushPermissionStatus(Notification.permission);
     }
@@ -140,6 +168,51 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     toast.success('Test push alert triggered! (Audio chime + Native push)');
   };
 
+  const handleVerifySmtp = async () => {
+    if (!smtpHost.trim() || !smtpUser.trim() || !smtpPass.trim()) {
+      toast.error('Please enter SMTP Host, Username/Email, and Password.');
+      return;
+    }
+
+    setIsVerifyingSmtp(true);
+    setSmtpVerificationMsg(null);
+    try {
+      const res = await fetch('/api/notifications/verify-smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: smtpHost.trim(),
+          port: Number(smtpPort) || 587,
+          user: smtpUser.trim(),
+          pass: smtpPass.trim(),
+          secure: smtpSecure,
+          fromEmail: smtpFromEmail.trim() || smtpUser.trim(),
+          fromName: smtpFromName.trim() || 'LeadDesk CRM',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSmtpVerificationMsg({
+          success: true,
+          text: data.message || 'SMTP server connection verified successfully!',
+        });
+        toast.success('SMTP server connection verified! Ready for production delivery.');
+      } else {
+        setSmtpVerificationMsg({
+          success: false,
+          text: data.message || 'Failed to authenticate with SMTP server.',
+        });
+        toast.error(`SMTP error: ${data.message}`);
+      }
+    } catch (err) {
+      const msg = (err as Error).message;
+      setSmtpVerificationMsg({ success: false, text: msg });
+      toast.error(`Connection failed: ${msg}`);
+    } finally {
+      setIsVerifyingSmtp(false);
+    }
+  };
+
   const handleSendTestEmail = async () => {
     if (!userEmail || !userEmail.trim() || !userEmail.includes('@')) {
       toast.error('Please enter a valid email address first in Profile & Identity.');
@@ -150,14 +223,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     setIsSendingTestEmail(true);
     setLastEmailPreviewUrl(null);
     try {
+      const currentSmtpConfig = smtpHost.trim() && smtpUser.trim() && smtpPass.trim() ? {
+        host: smtpHost.trim(),
+        port: Number(smtpPort) || 587,
+        user: smtpUser.trim(),
+        pass: smtpPass.trim(),
+        secure: smtpSecure,
+        fromEmail: smtpFromEmail.trim() || smtpUser.trim(),
+        fromName: smtpFromName.trim() || 'LeadDesk CRM',
+      } : undefined;
+
       const res = await fetch('/api/notifications/test-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: userEmail.trim() }),
+        body: JSON.stringify({
+          toEmail: userEmail.trim(),
+          smtpConfig: currentSmtpConfig,
+        }),
       });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Test email sent to ${userEmail}!`);
+        toast.success(data.message || `Test email sent to ${userEmail}!`);
         if (data.previewUrl) {
           setLastEmailPreviewUrl(data.previewUrl);
         }
@@ -204,6 +290,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         remind10MinBefore,
         remindAtTime,
         remindOverdue,
+        smtpHost: smtpHost.trim(),
+        smtpPort: Number(smtpPort) || 587,
+        smtpUser: smtpUser.trim(),
+        smtpPass: smtpPass.trim(),
+        smtpSecure,
+        smtpFromEmail: smtpFromEmail.trim(),
+        smtpFromName: smtpFromName.trim(),
       });
 
       toast.success('Profile, push & email notification settings updated!');
@@ -627,7 +720,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div className="p-3 rounded-xl bg-surface border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                   <div>
                     <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">Recipient Email (from Profile Setting)</span>
-                    <span className="text-xs font-bold text-ink">
+                    <span className="text-xs font-bold text-ink font-mono">
                       {userEmail && userEmail.trim() ? userEmail : <em className="text-semantic-overdue font-normal">Not configured — set your email in Profile & Identity</em>}
                     </span>
                   </div>
@@ -645,7 +738,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
                 {lastEmailPreviewUrl && (
                   <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                    <span>Email sent! Preview delivered message online:</span>
+                    <span>Email delivered! View message preview:</span>
                     <a
                       href={lastEmailPreviewUrl}
                       target="_blank"
@@ -658,18 +751,162 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 )}
               </div>
 
+              {/* Dynamic Custom SMTP Server Configuration */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold shrink-0">
+                      <Server size={16} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-ink flex items-center gap-2">
+                        <span>Outgoing SMTP Mail Server</span>
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                          Dynamic (No Env Vars Needed)
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-ink-muted mt-0.5">
+                        Configure your custom SMTP credentials here to send emails from your own domain or Gmail without restarting the server.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Host</label>
+                    <input
+                      type="text"
+                      value={smtpHost}
+                      onChange={e => setSmtpHost(e.target.value)}
+                      placeholder="e.g. smtp.gmail.com"
+                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Port</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={e => setSmtpPort(e.target.value)}
+                        placeholder="587"
+                        className="w-24 h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                      />
+                      <label className="flex items-center gap-1.5 text-xs text-ink cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={smtpSecure}
+                          onChange={e => setSmtpSecure(e.target.checked)}
+                          className="w-3.5 h-3.5 rounded cursor-pointer accent-lime"
+                        />
+                        <span>SSL / Port 465</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Username / Email</label>
+                    <input
+                      type="text"
+                      value={smtpUser}
+                      onChange={e => setSmtpUser(e.target.value)}
+                      placeholder="e.g. yourname@gmail.com"
+                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Password / App Password</label>
+                    <div className="relative">
+                      <input
+                        type={showSmtpPass ? 'text' : 'password'}
+                        value={smtpPass}
+                        onChange={e => setSmtpPass(e.target.value)}
+                        placeholder="e.g. 16-character app password"
+                        className="w-full h-9 pl-3 pr-9 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowSmtpPass(p => !p)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                        title={showSmtpPass ? 'Hide password' : 'Show password'}
+                      >
+                        {showSmtpPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">Sender From Email (Optional)</label>
+                    <input
+                      type="email"
+                      value={smtpFromEmail}
+                      onChange={e => setSmtpFromEmail(e.target.value)}
+                      placeholder="Defaults to SMTP Username"
+                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-ink mb-1">Sender Display Name</label>
+                    <input
+                      type="text"
+                      value={smtpFromName}
+                      onChange={e => setSmtpFromName(e.target.value)}
+                      placeholder="e.g. LeadDesk CRM"
+                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-2.5 rounded-xl bg-surface border border-border-subtle text-[11px] text-ink-muted leading-relaxed">
+                  <span className="font-semibold text-ink">Gmail Tip:</span> Use Host <code className="text-ink font-mono font-semibold">smtp.gmail.com</code>, Port <code className="text-ink font-mono font-semibold">587</code>, and generate a 16-character App Password under your <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-ink">Google Account &gt; Security &gt; App Passwords</a>.
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 flex-wrap">
+                  <button
+                    type="button"
+                    disabled={isVerifyingSmtp || !smtpHost || !smtpUser}
+                    onClick={handleVerifySmtp}
+                    className="h-8 px-3 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle disabled:opacity-50 text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {isVerifyingSmtp ? <Loader2 size={13} className="animate-spin text-ink" /> : <ShieldCheck size={13} />}
+                    <span>{isVerifyingSmtp ? 'Verifying SMTP...' : 'Test SMTP Connection'}</span>
+                  </button>
+
+                  {smtpVerificationMsg && (
+                    <span className={`text-xs font-semibold flex items-center gap-1 ${
+                      smtpVerificationMsg.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {smtpVerificationMsg.success ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                      <span>{smtpVerificationMsg.text}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
               {/* Multi-Stage Alert Thresholds */}
               <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-3">
-                <p className="text-xs font-bold text-ink">Automated Reminder Schedule</p>
+                <div className="flex items-center gap-2">
+                  <Clock size={15} className="text-ink-secondary" />
+                  <p className="text-xs font-bold text-ink">Automated Reminder Schedule</p>
+                </div>
                 <p className="text-[11px] text-ink-muted">
                   Choose the timeline milestones when LeadDesk will trigger push and fallback email alerts:
                 </p>
 
-                <div className="space-y-2.5 pt-1">
+                <div className="space-y-2 pt-1">
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">⏰ 2 Hours Left</span>
-                      <span className="text-[11px] text-ink-muted">Early heads-up 2 hours before scheduled time</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                        <Clock size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">2 Hours Left</span>
+                        <span className="text-[11px] text-ink-muted">Early heads-up 2 hours before scheduled time</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"
@@ -680,9 +917,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
 
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">⏰ 1 Hour Left</span>
-                      <span className="text-[11px] text-ink-muted">Reminder 1 hour before scheduled time</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                        <Timer size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">1 Hour Left</span>
+                        <span className="text-[11px] text-ink-muted">Reminder 1 hour before scheduled time</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"
@@ -693,9 +935,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
 
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">⚡ 10 Minutes Left</span>
-                      <span className="text-[11px] text-ink-muted">High-priority urgent nudge 10 minutes before</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                        <Zap size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">10 Minutes Left</span>
+                        <span className="text-[11px] text-ink-muted">High-priority urgent nudge 10 minutes before</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"
@@ -706,9 +953,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
 
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">🎯 Exact Moment</span>
-                      <span className="text-[11px] text-ink-muted">Alert at the exact scheduled follow-up minute</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Target size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">Exact Moment</span>
+                        <span className="text-[11px] text-ink-muted">Alert at the exact scheduled follow-up minute</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"
@@ -719,9 +971,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
 
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">🚨 Overdue Alert (Repeat)</span>
-                      <span className="text-[11px] text-ink-muted">If follow-up wasn&apos;t completed, remind again</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                        <AlertTriangle size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">Overdue Alert (Repeat)</span>
+                        <span className="text-[11px] text-ink-muted">If follow-up wasn&apos;t completed, remind again</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"
@@ -732,9 +989,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </label>
 
                   <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div>
-                      <span className="text-xs font-bold text-ink block">✉️ Email Fallback Enabled</span>
-                      <span className="text-[11px] text-ink-muted">Send email along with every push notification</span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                        <Mail size={13} />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-ink block">Email Fallback Enabled</span>
+                        <span className="text-[11px] text-ink-muted">Send email along with every push notification</span>
+                      </div>
                     </div>
                     <input
                       type="checkbox"

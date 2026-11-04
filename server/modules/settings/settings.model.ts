@@ -39,6 +39,15 @@ export const settingsMongooseSchema = new Schema<SettingsDocument>(
     remind10MinBefore: { type: Boolean, default: true },
     remindAtTime: { type: Boolean, default: true },
     remindOverdue: { type: Boolean, default: true },
+
+    // Custom Dynamic SMTP Settings
+    smtpHost: { type: String, default: '' },
+    smtpPort: { type: Number, default: 587 },
+    smtpUser: { type: String, default: '' },
+    smtpPass: { type: String, default: '' },
+    smtpSecure: { type: Boolean, default: false },
+    smtpFromEmail: { type: String, default: '' },
+    smtpFromName: { type: String, default: 'LeadDesk CRM' },
   },
   {
     timestamps: true,
