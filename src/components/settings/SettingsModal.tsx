@@ -34,6 +34,8 @@ import {
   Eye,
   EyeOff,
   Lock,
+  ArrowLeft,
+  ChevronDown,
 } from 'lucide-react';
 import { AppSettings } from '../../types';
 import { CustomSelect } from '../common/Select';
@@ -47,8 +49,8 @@ interface SettingsModalProps {
   settings: AppSettings;
   onSaveSettings: (updates: Partial<AppSettings>) => Promise<void>;
   onClearDemoData: () => void;
-  onExportJson: () => void;
-  onToggleTheme: () => void;
+  onExportJson?: () => void;
+  onToggleTheme?: () => void;
 }
 
 type SettingsTab = 'profile' | 'preferences' | 'notifications' | 'appearance';
@@ -65,7 +67,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile');
   const [isSaving, setIsSaving] = useState(false);
 
-  // Profile fields
+  // Profile
   const [userName, setUserName] = useState(settings.userName || '');
   const [userRole, setUserRole] = useState(settings.userRole || '');
   const [userEmail, setUserEmail] = useState(settings.userEmail || '');
@@ -160,17 +162,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleSendTestPush = async () => {
     playNotificationChime();
     await triggerPushNotification(
-      '🎯 Test Push: Alex Rivera',
-      'Follow-up due right now for Software Project ($5k). WhatsApp direct link ready.',
+      'Test Reminder: Alex Rivera',
+      'Follow-up scheduled right now for Software MVP ($5,000).',
       'test-lead',
       'at_time'
     );
-    toast.success('Test push alert triggered! (Audio chime + Native push)');
+    toast.success('Test push alert triggered with sound chime!');
   };
 
   const handleVerifySmtp = async () => {
     if (!smtpHost.trim() || !smtpUser.trim() || !smtpPass.trim()) {
-      toast.error('Please enter SMTP Host, Username/Email, and Password.');
+      toast.error('Enter SMTP Host, Username/Email, and Password.');
       return;
     }
 
@@ -194,13 +196,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       if (data.success) {
         setSmtpVerificationMsg({
           success: true,
-          text: data.message || 'SMTP server connection verified successfully!',
+          text: data.message || 'SMTP connected successfully!',
         });
-        toast.success('SMTP server connection verified! Ready for production delivery.');
+        toast.success('SMTP server connection verified!');
       } else {
         setSmtpVerificationMsg({
           success: false,
-          text: data.message || 'Failed to authenticate with SMTP server.',
+          text: data.message || 'Failed to authenticate.',
         });
         toast.error(`SMTP error: ${data.message}`);
       }
@@ -215,7 +217,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleSendTestEmail = async () => {
     if (!userEmail || !userEmail.trim() || !userEmail.includes('@')) {
-      toast.error('Please enter a valid email address first in Profile & Identity.');
+      toast.error('Enter your email address in Profile first.');
       setActiveTab('profile');
       return;
     }
@@ -248,17 +250,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           setLastEmailPreviewUrl(data.previewUrl);
         }
       } else {
-        toast.error(`Email delivery error: ${data.message}`);
+        toast.error(`Email error: ${data.message}`);
       }
     } catch (err) {
-      toast.error(`Failed to send test email: ${(err as Error).message}`);
+      toast.error(`Delivery failed: ${(err as Error).message}`);
     } finally {
       setIsSendingTestEmail(false);
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     setIsSaving(true);
     try {
       const parsedCadence = cadenceStr
@@ -299,7 +301,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         smtpFromName: smtpFromName.trim(),
       });
 
-      toast.success('Profile, push & email notification settings updated!');
+      toast.success('Settings updated!');
       onClose();
     } catch (err) {
       toast.error(`Save failed: ${(err as Error).message}`);
@@ -311,22 +313,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const userInitials = getInitials(userName || 'Creator');
 
   return (
-    <div className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+    // On small screen (< md): full separate page view (fixed inset-0 bg-canvas).
+    // On desktop (md:): floating centered modal dialog.
+    <div className="fixed inset-0 z-50 md:z-60 bg-canvas md:bg-black/50 md:backdrop-blur-xs flex flex-col md:items-center md:justify-center md:p-4 overflow-y-auto">
       <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.95, opacity: 0 }}
-        className="w-full max-w-2xl bg-surface text-ink rounded-3xl shadow-2xl border border-border-subtle flex flex-col max-h-[92vh] overflow-hidden"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 8 }}
+        transition={{ duration: 0.18 }}
+        className="w-full min-h-screen md:min-h-0 md:max-w-2xl bg-surface text-ink md:rounded-3xl shadow-2xl md:border md:border-border-subtle flex flex-col md:max-h-[90vh] overflow-hidden"
       >
-        {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-border-subtle flex items-center justify-between">
+        {/* Mobile Header (Separate Page App-Bar with Back button) */}
+        <div className="md:hidden sticky top-0 z-30 bg-surface/95 backdrop-blur-md px-4 py-3 border-b border-border-subtle flex items-center justify-between">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 text-xs font-bold text-ink hover:text-ink-secondary transition-colors cursor-pointer"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft size={18} />
+            <span>Back</span>
+          </button>
+
+          <h1 className="text-sm font-bold text-ink tracking-tight">Settings</h1>
+
+          <button
+            type="button"
+            onClick={() => handleSave()}
+            disabled={isSaving}
+            className="px-3.5 py-1.5 rounded-full bg-lime text-[#14161A] text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+          >
+            {isSaving ? <Loader2 size={13} className="animate-spin text-[#14161A]" /> : <Save size={13} className="text-[#14161A]" />}
+            <span>Save</span>
+          </button>
+        </div>
+
+        {/* Desktop Modal Header */}
+        <div className="hidden md:flex p-5 sm:p-6 border-b border-border-subtle items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-lime/20 text-[#14161A] dark:text-lime flex items-center justify-center font-bold text-base shadow-xs">
+            <div className="w-10 h-10 rounded-2xl bg-lime/20 text-[#14161A] dark:text-lime flex items-center justify-center font-bold text-sm shadow-xs">
               {userInitials}
             </div>
             <div>
-              <h2 className="text-lg font-bold text-ink tracking-tight">Profile & Settings</h2>
-              <p className="text-xs text-ink-muted">Personal brand identity and database preferences</p>
+              <h2 className="text-base font-bold text-ink tracking-tight">Settings</h2>
+              <p className="text-xs text-ink-muted">Profile, CRM preferences & notifications</p>
             </div>
           </div>
           <button
@@ -339,8 +369,26 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex items-center px-6 pt-3 border-b border-border-subtle/80 gap-2 bg-surface-subtle/30 overflow-x-auto no-scrollbar">
+        {/* Small Screen: Dropdown Section Select (Instead of Tabs) */}
+        <div className="sm:hidden px-4 py-2.5 bg-surface border-b border-border-subtle">
+          <div className="relative">
+            <select
+              value={activeTab}
+              onChange={e => setActiveTab(e.target.value as SettingsTab)}
+              aria-label="Settings Section"
+              className="w-full h-10 pl-3.5 pr-10 rounded-xl bg-surface-subtle border border-border-subtle text-xs font-bold text-ink appearance-none focus:outline-none focus:border-ink cursor-pointer"
+            >
+              <option value="profile">Profile & Brand</option>
+              <option value="preferences">CRM Preferences</option>
+              <option value="notifications">Alerts & Notifications</option>
+              <option value="appearance">Theme & Data</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Desktop: Horizontal Pill Tabs */}
+        <div className="hidden sm:flex items-center px-6 pt-3 border-b border-border-subtle/80 gap-2 bg-surface-subtle/30 overflow-x-auto no-scrollbar">
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
@@ -350,8 +398,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <User size={15} />
-            <span>Profile & Identity</span>
+            <User size={14} />
+            <span>Profile & Brand</span>
           </button>
 
           <button
@@ -363,8 +411,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <Sliders size={15} />
-            <span>CRM & Follow-ups</span>
+            <Sliders size={14} />
+            <span>CRM Preferences</span>
           </button>
 
           <button
@@ -376,8 +424,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <Bell size={15} />
-            <span>Push & Email Alerts</span>
+            <Bell size={14} />
+            <span>Alerts & Notifications</span>
           </button>
 
           <button
@@ -389,173 +437,142 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
-            <Palette size={15} />
-            <span>Theme & Storage</span>
+            <Palette size={14} />
+            <span>Theme & Data</span>
           </button>
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {/* TAB 1: PROFILE & IDENTITY */}
+        {/* Form Body with Reduced, Minimal Content */}
+        <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          {/* TAB 1: PROFILE & BRAND */}
           {activeTab === 'profile' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
-                    <User size={14} className="text-ink-muted" />
-                    <span>Your Full Name *</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Full Name *</label>
                   <input
                     type="text"
                     required
                     value={userName}
                     onChange={e => setUserName(e.target.value)}
                     placeholder="e.g. Alex Rivers"
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
-                    <Briefcase size={14} className="text-ink-muted" />
-                    <span>Professional Headline / Role</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Role / Title</label>
                   <input
                     type="text"
                     value={userRole}
                     onChange={e => setUserRole(e.target.value)}
-                    placeholder="e.g. Software Engineer & Creator"
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                    placeholder="e.g. Software Consultant"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
-                    <Mail size={14} className="text-ink-muted" />
-                    <span>Email Address</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Notification Email</label>
                   <input
                     type="email"
                     value={userEmail}
                     onChange={e => setUserEmail(e.target.value)}
-                    placeholder="e.g. alex@example.com"
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                    placeholder="e.g. you@example.com"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
-                    <Phone size={14} className="text-ink-muted" />
-                    <span>WhatsApp / Direct Mobile</span>
-                  </label>
+                  <label className="block text-xs font-semibold text-ink mb-1">WhatsApp / Phone</label>
                   <input
                     type="text"
                     value={userPhone}
                     onChange={e => setUserPhone(e.target.value)}
                     placeholder="e.g. +14155552671"
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1.5">Short Bio / Pitch</label>
-                <textarea
-                  rows={2}
+                <label className="block text-xs font-semibold text-ink mb-1">Short Bio</label>
+                <input
+                  type="text"
                   value={userBio}
                   onChange={e => setUserBio(e.target.value)}
-                  placeholder="e.g. Helping high-growth startups build and scale web apps in React, Node & TypeScript."
-                  className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                  placeholder="One-line summary of services"
+                  className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1.5">Default Message Signature</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-ink">Message Signature</label>
+                  <span className="text-[10px] text-ink-muted">Used in {"{{my_name}}"} tag</span>
+                </div>
                 <textarea
                   rows={2}
                   value={userSignature}
                   onChange={e => setUserSignature(e.target.value)}
-                  placeholder="e.g. Best regards,&#10;Alex Rivers"
-                  className="w-full p-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 transition-colors"
+                  placeholder="Best regards,&#10;Alex Rivers"
+                  className="w-full p-2.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
                 />
-                <p className="text-[11px] text-ink-muted mt-1">
-                  Replaces <code className="text-ink font-semibold">{"{{my_name}}"}</code> in your outreach templates.
-                </p>
               </div>
 
               {/* Social Channels */}
-              <div className="pt-3 border-t border-border-subtle">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-3 flex items-center gap-1.5">
-                  <Share2 size={13} />
-                  <span>Your Content Channels (For Lead Attribution)</span>
-                </h3>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">Instagram Handle</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted font-bold">@</span>
-                      <input
-                        type="text"
-                        value={instagramHandle}
-                        onChange={e => setInstagramHandle(e.target.value.replace(/^@/, ''))}
-                        placeholder="yourhandle"
-                        className="w-full h-9 pl-7 pr-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">TikTok Handle</label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-ink-muted font-bold">@</span>
-                      <input
-                        type="text"
-                        value={tiktokHandle}
-                        onChange={e => setTiktokHandle(e.target.value.replace(/^@/, ''))}
-                        placeholder="yourhandle"
-                        className="w-full h-9 pl-7 pr-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">YouTube Channel</label>
+              <div className="pt-2 border-t border-border-subtle">
+                <p className="text-xs font-semibold text-ink-muted mb-2.5">Content Channels (Lead Attribution)</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-muted">@</span>
                     <input
                       type="text"
-                      value={youtubeHandle}
-                      onChange={e => setYoutubeHandle(e.target.value)}
-                      placeholder="e.g. @YourChannel"
-                      className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
+                      value={instagramHandle}
+                      onChange={e => setInstagramHandle(e.target.value.replace(/^@/, ''))}
+                      placeholder="Instagram"
+                      className="w-full h-8 pl-6 pr-2.5 rounded-lg bg-surface-subtle border border-border-subtle text-xs text-ink"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">Personal Website / Portfolio</label>
-                    <div className="relative">
-                      <Globe size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-                      <input
-                        type="url"
-                        value={websiteUrl}
-                        onChange={e => setWebsiteUrl(e.target.value)}
-                        placeholder="https://yourdomain.com"
-                        className="w-full h-9 pl-8 pr-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
-                      />
-                    </div>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-muted">@</span>
+                    <input
+                      type="text"
+                      value={tiktokHandle}
+                      onChange={e => setTiktokHandle(e.target.value.replace(/^@/, ''))}
+                      placeholder="TikTok"
+                      className="w-full h-8 pl-6 pr-2.5 rounded-lg bg-surface-subtle border border-border-subtle text-xs text-ink"
+                    />
                   </div>
+
+                  <input
+                    type="text"
+                    value={youtubeHandle}
+                    onChange={e => setYoutubeHandle(e.target.value)}
+                    placeholder="YouTube channel"
+                    className="w-full h-8 px-2.5 rounded-lg bg-surface-subtle border border-border-subtle text-xs text-ink"
+                  />
+
+                  <input
+                    type="url"
+                    value={websiteUrl}
+                    onChange={e => setWebsiteUrl(e.target.value)}
+                    placeholder="Website URL"
+                    className="w-full h-8 px-2.5 rounded-lg bg-surface-subtle border border-border-subtle text-xs text-ink"
+                  />
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 2: PREFERENCES & CRM */}
+          {/* TAB 2: CRM PREFERENCES */}
           {activeTab === 'preferences' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5">Default Country Code</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Default Country Code</label>
                   <CustomSelect
                     value={defaultCountryCode}
                     onChange={val => setDefaultCountryCode(val)}
@@ -574,11 +591,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       { value: 'SA', label: 'Saudi Arabia (+966)' },
                     ]}
                   />
-                  <p className="text-[11px] text-ink-muted mt-1">Pre-selected when quickly adding phone numbers.</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5">Default Currency</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Currency</label>
                   <CustomSelect
                     value={defaultCurrency}
                     onChange={val => setDefaultCurrency(val)}
@@ -594,415 +610,293 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       { value: 'SAR', label: 'SAR (SAR)' },
                     ]}
                   />
-                  <p className="text-[11px] text-ink-muted mt-1">Currency used for deal estimates and won revenue.</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5">Daily Follow-up Hour</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Default Follow-up Hour</label>
                   <input
                     type="time"
                     value={defaultFollowUpTime}
                     onChange={e => setDefaultFollowUpTime(e.target.value)}
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
                   />
-                  <p className="text-[11px] text-ink-muted mt-1">Default scheduled time when you set follow-ups.</p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-ink mb-1.5">Going Cold Alert (Days)</label>
+                  <label className="block text-xs font-semibold text-ink mb-1">Going Cold (Days)</label>
                   <input
                     type="number"
                     min={1}
                     max={60}
                     value={goingColdDays}
                     onChange={e => setGoingColdDays(Number(e.target.value))}
-                    className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
+                    className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
                   />
-                  <p className="text-[11px] text-ink-muted mt-1">Flags leads not contacted for this many days.</p>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-ink mb-1.5">Follow-up Cadence Preset Days</label>
+                <label className="block text-xs font-semibold text-ink mb-1">Reschedule Preset Days</label>
                 <input
                   type="text"
                   value={cadenceStr}
                   onChange={e => setCadenceStr(e.target.value)}
                   placeholder="2, 5, 10"
-                  className="w-full h-10 px-3.5 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
+                  className="w-full h-9 px-3 rounded-xl bg-surface-subtle border border-border-subtle text-xs text-ink"
                 />
-                <p className="text-[11px] text-ink-muted mt-1">
-                  Comma-separated days shown on the 1-click follow-up reschedule bar (e.g. +2d, +5d, +10d).
-                </p>
+                <p className="text-[10px] text-ink-muted mt-1">Comma-separated days on quick bar (+2d, +5d, +10d)</p>
               </div>
             </div>
           )}
 
-          {/* TAB 3: PUSH NOTIFICATIONS & EMAIL ALERTS */}
+          {/* TAB 3: ALERTS & NOTIFICATIONS */}
           {activeTab === 'notifications' && (
-            <div className="space-y-5">
-              {/* Push Notifications Card */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-lime flex items-center justify-center text-[#14161A] font-bold shrink-0">
-                      <Bell size={16} className="text-[#14161A]" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-ink flex items-center gap-2">
-                        <span>Browser & Push Notifications</span>
-                        <span className="text-[10px] font-semibold text-ink-muted">· Firebase Connected</span>
-                      </p>
-                      <p className="text-[11px] text-ink-muted mt-0.5">
-                        Receive instant sound and desktop push alerts for scheduled lead follow-ups.
-                      </p>
-                    </div>
+            <div className="space-y-4">
+              {/* Push Alerts Card */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Bell size={15} className="text-lime-deep shrink-0" />
+                    <span className="text-xs font-bold text-ink">Browser Push Alerts</span>
                   </div>
-
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                      pushPermissionStatus === 'granted'
-                        ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
-                        : pushPermissionStatus === 'denied'
-                        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30'
-                        : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30'
-                    }`}
-                  >
-                    {pushPermissionStatus === 'granted'
-                      ? 'Push Enabled'
-                      : pushPermissionStatus === 'denied'
-                      ? 'Blocked in Browser'
-                      : 'Permission Needed'}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    pushPermissionStatus === 'granted'
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
+                  }`}>
+                    {pushPermissionStatus === 'granted' ? 'Enabled' : 'Needs Permission'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border-subtle/70">
+                <div className="flex items-center gap-2 pt-1">
                   {pushPermissionStatus !== 'granted' ? (
                     <button
                       type="button"
                       onClick={handleRequestPush}
-                      className="h-9 px-4 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      className="h-8 px-3 rounded-lg bg-lime text-[#14161A] font-bold text-xs flex items-center gap-1 cursor-pointer"
                     >
-                      <Bell size={13} className="text-[#14161A]" />
-                      <span>Enable Push Notifications</span>
+                      <Bell size={13} />
+                      <span>Enable Push</span>
                     </button>
                   ) : (
                     <button
                       type="button"
                       onClick={handleSendTestPush}
-                      className="h-9 px-4 rounded-xl bg-surface border border-border-subtle hover:bg-surface-subtle text-ink font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      className="h-8 px-3 rounded-lg bg-surface border border-border-subtle text-xs font-semibold text-ink flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Send size={13} />
-                      <span>Send Test Push Notification</span>
+                      <Send size={12} />
+                      <span>Test Push Alert</span>
                     </button>
                   )}
                 </div>
               </div>
 
-              {/* Fallback Email Notification Card */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-pastel-lavender flex items-center justify-center text-[#14161A] font-bold shrink-0">
-                      <Mail size={16} className="text-[#14161A]" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-ink">Fallback Email Notifications</p>
-                      <p className="text-[11px] text-ink-muted mt-0.5">
-                        If you miss or don&apos;t see the push alert, LeadDesk drops an automated reminder directly to your email.
-                      </p>
-                    </div>
+              {/* Email Alerts Card */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle space-y-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Mail size={15} className="text-sky-500 shrink-0" />
+                    <span className="text-xs font-bold text-ink">Fallback Email</span>
                   </div>
+                  <span className="text-[11px] font-mono text-ink-muted truncate max-w-[160px] sm:max-w-none">
+                    {userEmail || 'No email set'}
+                  </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-surface border border-border-subtle flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                  <div>
-                    <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block">Recipient Email (from Profile Setting)</span>
-                    <span className="text-xs font-bold text-ink font-mono">
-                      {userEmail && userEmail.trim() ? userEmail : <em className="text-semantic-overdue font-normal">Not configured — set your email in Profile & Identity</em>}
-                    </span>
-                  </div>
-
+                <div className="flex items-center gap-2 pt-1">
                   <button
                     type="button"
                     disabled={isSendingTestEmail || !userEmail}
                     onClick={handleSendTestEmail}
-                    className="h-8 px-3 rounded-lg bg-surface-subtle hover:bg-border-subtle disabled:opacity-50 text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                    className="h-8 px-3 rounded-lg bg-surface border border-border-subtle text-xs font-semibold text-ink flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                   >
-                    {isSendingTestEmail ? <Loader2 size={13} className="animate-spin text-ink" /> : <Send size={13} />}
+                    {isSendingTestEmail ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
                     <span>{isSendingTestEmail ? 'Sending...' : 'Send Test Email'}</span>
                   </button>
-                </div>
 
-                {lastEmailPreviewUrl && (
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-800 dark:text-emerald-300 flex items-center justify-between">
-                    <span>Email delivered! View message preview:</span>
+                  {lastEmailPreviewUrl && (
                     <a
                       href={lastEmailPreviewUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-bold underline hover:opacity-80"
+                      className="text-xs text-emerald-600 dark:text-emerald-400 font-bold underline"
                     >
-                      Open Email Preview ↗
+                      View Preview ↗
                     </a>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
-              {/* Dynamic Custom SMTP Server Configuration */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center font-bold shrink-0">
-                      <Server size={16} />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-ink flex items-center gap-2">
-                        <span>Outgoing SMTP Mail Server</span>
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                          Dynamic (No Env Vars Needed)
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-ink-muted mt-0.5">
-                        Configure your custom SMTP credentials here to send emails from your own domain or Gmail without restarting the server.
-                      </p>
-                    </div>
+              {/* Dynamic SMTP Card */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Server size={15} className="text-violet-500 shrink-0" />
+                    <span className="text-xs font-bold text-ink">Custom SMTP Server (Optional)</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Host</label>
-                    <input
-                      type="text"
-                      value={smtpHost}
-                      onChange={e => setSmtpHost(e.target.value)}
-                      placeholder="e.g. smtp.gmail.com"
-                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
-                    />
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type="text"
+                    value={smtpHost}
+                    onChange={e => setSmtpHost(e.target.value)}
+                    placeholder="Host (e.g. smtp.gmail.com)"
+                    className="w-full h-8 px-2.5 rounded-lg bg-surface border border-border-subtle text-xs text-ink font-mono"
+                  />
 
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Port</label>
-                    <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={smtpPort}
+                      onChange={e => setSmtpPort(e.target.value)}
+                      placeholder="Port (587)"
+                      className="w-20 h-8 px-2.5 rounded-lg bg-surface border border-border-subtle text-xs text-ink font-mono"
+                    />
+                    <label className="flex items-center gap-1.5 text-xs text-ink cursor-pointer select-none">
                       <input
-                        type="number"
-                        value={smtpPort}
-                        onChange={e => setSmtpPort(e.target.value)}
-                        placeholder="587"
-                        className="w-24 h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={e => setSmtpSecure(e.target.checked)}
+                        className="w-3.5 h-3.5 rounded accent-lime"
                       />
-                      <label className="flex items-center gap-1.5 text-xs text-ink cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={smtpSecure}
-                          onChange={e => setSmtpSecure(e.target.checked)}
-                          className="w-3.5 h-3.5 rounded cursor-pointer accent-lime"
-                        />
-                        <span>SSL / Port 465</span>
-                      </label>
-                    </div>
+                      <span>SSL (465)</span>
+                    </label>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Username / Email</label>
+                  <input
+                    type="text"
+                    value={smtpUser}
+                    onChange={e => setSmtpUser(e.target.value)}
+                    placeholder="SMTP Username / Email"
+                    className="w-full h-8 px-2.5 rounded-lg bg-surface border border-border-subtle text-xs text-ink font-mono"
+                  />
+
+                  <div className="relative">
                     <input
-                      type="text"
-                      value={smtpUser}
-                      onChange={e => setSmtpUser(e.target.value)}
-                      placeholder="e.g. yourname@gmail.com"
-                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
+                      type={showSmtpPass ? 'text' : 'password'}
+                      value={smtpPass}
+                      onChange={e => setSmtpPass(e.target.value)}
+                      placeholder="SMTP Password / App Pass"
+                      className="w-full h-8 pl-2.5 pr-8 rounded-lg bg-surface border border-border-subtle text-xs text-ink font-mono"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">SMTP Password / App Password</label>
-                    <div className="relative">
-                      <input
-                        type={showSmtpPass ? 'text' : 'password'}
-                        value={smtpPass}
-                        onChange={e => setSmtpPass(e.target.value)}
-                        placeholder="e.g. 16-character app password"
-                        className="w-full h-9 pl-3 pr-9 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowSmtpPass(p => !p)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
-                        title={showSmtpPass ? 'Hide password' : 'Show password'}
-                      >
-                        {showSmtpPass ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">Sender From Email (Optional)</label>
-                    <input
-                      type="email"
-                      value={smtpFromEmail}
-                      onChange={e => setSmtpFromEmail(e.target.value)}
-                      placeholder="Defaults to SMTP Username"
-                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40 font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-ink mb-1">Sender Display Name</label>
-                    <input
-                      type="text"
-                      value={smtpFromName}
-                      onChange={e => setSmtpFromName(e.target.value)}
-                      placeholder="e.g. LeadDesk CRM"
-                      className="w-full h-9 px-3 rounded-xl bg-surface border border-border-subtle text-xs text-ink focus:outline-none focus:border-ink/40"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSmtpPass(p => !p)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink cursor-pointer"
+                    >
+                      {showSmtpPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                    </button>
                   </div>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-surface border border-border-subtle text-[11px] text-ink-muted leading-relaxed">
-                  <span className="font-semibold text-ink">Gmail Tip:</span> Use Host <code className="text-ink font-mono font-semibold">smtp.gmail.com</code>, Port <code className="text-ink font-mono font-semibold">587</code>, and generate a 16-character App Password under your <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer" className="underline font-semibold text-ink">Google Account &gt; Security &gt; App Passwords</a>.
-                </div>
+                <p className="text-[10px] text-ink-muted">
+                  Gmail: host <code className="font-mono text-ink">smtp.gmail.com:587</code> with Google App Password.
+                </p>
 
                 <div className="flex items-center gap-2 pt-1 flex-wrap">
                   <button
                     type="button"
                     disabled={isVerifyingSmtp || !smtpHost || !smtpUser}
                     onClick={handleVerifySmtp}
-                    className="h-8 px-3 rounded-lg bg-surface border border-border-subtle hover:bg-surface-subtle disabled:opacity-50 text-xs font-semibold text-ink flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="h-7 px-2.5 rounded-lg bg-surface border border-border-subtle text-xs font-semibold text-ink flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                   >
-                    {isVerifyingSmtp ? <Loader2 size={13} className="animate-spin text-ink" /> : <ShieldCheck size={13} />}
-                    <span>{isVerifyingSmtp ? 'Verifying SMTP...' : 'Test SMTP Connection'}</span>
+                    {isVerifyingSmtp ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                    <span>Test SMTP</span>
                   </button>
 
                   {smtpVerificationMsg && (
                     <span className={`text-xs font-semibold flex items-center gap-1 ${
                       smtpVerificationMsg.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
                     }`}>
-                      {smtpVerificationMsg.success ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+                      {smtpVerificationMsg.success ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
                       <span>{smtpVerificationMsg.text}</span>
                     </span>
                   )}
                 </div>
               </div>
 
-              {/* Multi-Stage Alert Thresholds */}
-              <div className="p-4 sm:p-5 rounded-2xl bg-surface-subtle border border-border-subtle space-y-3">
-                <div className="flex items-center gap-2">
-                  <Clock size={15} className="text-ink-secondary" />
-                  <p className="text-xs font-bold text-ink">Automated Reminder Schedule</p>
-                </div>
-                <p className="text-[11px] text-ink-muted">
-                  Choose the timeline milestones when LeadDesk will trigger push and fallback email alerts:
-                </p>
-
-                <div className="space-y-2 pt-1">
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                        <Clock size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">2 Hours Left</span>
-                        <span className="text-[11px] text-ink-muted">Early heads-up 2 hours before scheduled time</span>
-                      </div>
+              {/* Schedule Checklist */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle space-y-2">
+                <p className="text-xs font-bold text-ink mb-1.5">Reminder Schedule</p>
+                <div className="space-y-1.5">
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-indigo-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">2 Hours Before</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={remind2HoursBefore}
                       onChange={e => setRemind2HoursBefore(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
-                        <Timer size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">1 Hour Left</span>
-                        <span className="text-[11px] text-ink-muted">Reminder 1 hour before scheduled time</span>
-                      </div>
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Timer size={14} className="text-violet-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">1 Hour Before</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={remind1HourBefore}
                       onChange={e => setRemind1HourBefore(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                        <Zap size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">10 Minutes Left</span>
-                        <span className="text-[11px] text-ink-muted">High-priority urgent nudge 10 minutes before</span>
-                      </div>
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Zap size={14} className="text-amber-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">10 Minutes Before</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={remind10MinBefore}
                       onChange={e => setRemind10MinBefore(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                        <Target size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">Exact Moment</span>
-                        <span className="text-[11px] text-ink-muted">Alert at the exact scheduled follow-up minute</span>
-                      </div>
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Target size={14} className="text-emerald-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">At Exact Time</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={remindAtTime}
                       onChange={e => setRemindAtTime(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                        <AlertTriangle size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">Overdue Alert (Repeat)</span>
-                        <span className="text-[11px] text-ink-muted">If follow-up wasn&apos;t completed, remind again</span>
-                      </div>
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-rose-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">Overdue Reminder</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={remindOverdue}
                       onChange={e => setRemindOverdue(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-2.5 rounded-xl bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle/50 transition-colors">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-6 h-6 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-                        <Mail size={13} />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-ink block">Email Fallback Enabled</span>
-                        <span className="text-[11px] text-ink-muted">Send email along with every push notification</span>
-                      </div>
+                  <label className="flex items-center justify-between p-2 rounded-lg bg-surface border border-border-subtle cursor-pointer hover:bg-surface-subtle transition-colors">
+                    <div className="flex items-center gap-2">
+                      <Mail size={14} className="text-sky-500 shrink-0" />
+                      <span className="text-xs font-semibold text-ink">Email Delivery</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={emailNotificationsEnabled}
                       onChange={e => setEmailNotificationsEnabled(e.target.checked)}
-                      className="w-4 h-4 rounded cursor-pointer accent-lime"
+                      className="w-4 h-4 rounded accent-lime cursor-pointer"
                     />
                   </label>
                 </div>
@@ -1010,59 +904,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: APPEARANCE & DATABASE */}
+          {/* TAB 4: THEME & DATA */}
           {activeTab === 'appearance' && (
             <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-surface-subtle border border-border-subtle flex items-center justify-between">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-ink">Color Theme</p>
-                  <p className="text-[11px] text-ink-muted">Switch between light canvas and high-contrast dark mode</p>
+                  <p className="text-[10px] text-ink-muted">Light or dark interface</p>
                 </div>
                 <button
                   type="button"
                   onClick={onToggleTheme}
-                  className="h-9 px-4 rounded-xl bg-surface border border-border-subtle hover:border-ink/20 text-xs font-bold text-ink transition-colors cursor-pointer shadow-xs"
+                  className="h-8 px-3 rounded-lg bg-surface border border-border-subtle text-xs font-bold text-ink cursor-pointer"
                 >
-                  {settings.theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
+                  {settings.theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </button>
               </div>
 
-              <div className="p-4 rounded-2xl bg-surface-subtle border border-border-subtle flex items-center justify-between">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-ink">Reduced Motion</p>
-                  <p className="text-[11px] text-ink-muted">Disable spring transitions for faster navigation</p>
+                  <p className="text-[10px] text-ink-muted">Disable spring animations</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={reducedMotion}
                   onChange={e => setReducedMotion(e.target.checked)}
-                  className="w-5 h-5 rounded cursor-pointer accent-lime"
+                  className="w-4 h-4 rounded accent-lime cursor-pointer"
                 />
               </div>
 
-              {/* Database & Data Management */}
-              <div className="p-4 rounded-2xl bg-surface-subtle border border-border-subtle space-y-3">
-                <div className="flex items-start gap-2.5">
-                  <ShieldCheck size={18} className="text-semantic-success shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-bold text-ink flex items-center gap-1.5">
-                      <span>Database Storage Connected</span>
-                      <CheckCircle2 size={13} className="text-semantic-success" />
-                    </p>
-                    <p className="text-[11px] text-ink-muted mt-0.5">
-                      Settings and lead mutations are fetched and saved directly in your backend database.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-border-subtle/80 flex items-center gap-2 flex-wrap">
+              {/* Data Actions */}
+              <div className="p-3.5 sm:p-4 rounded-xl bg-surface-subtle border border-border-subtle space-y-2.5">
+                <p className="text-xs font-bold text-ink">Data Management</p>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={onExportJson}
-                    className="flex-1 h-9 px-3 rounded-xl bg-surface border border-border-subtle hover:border-ink/20 text-xs font-semibold text-ink flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                    className="flex-1 h-8 px-3 rounded-lg bg-surface border border-border-subtle text-xs font-semibold text-ink flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    <Download size={14} />
-                    <span>Export Data (JSON)</span>
+                    <Download size={13} />
+                    <span>Export JSON</span>
                   </button>
 
                   <button
@@ -1073,32 +955,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         onClose();
                       }
                     }}
-                    className="h-9 px-3 rounded-xl bg-semantic-overdue/10 hover:bg-semantic-overdue/20 text-semantic-overdue text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors"
+                    className="h-8 px-3 rounded-lg bg-semantic-overdue/10 text-semantic-overdue text-xs font-bold flex items-center gap-1 cursor-pointer"
                   >
-                    <RotateCcw size={14} />
-                    <span>Wipe All Leads</span>
+                    <RotateCcw size={13} />
+                    <span>Wipe Data</span>
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Modal Footer */}
-          <div className="pt-4 border-t border-border-subtle flex items-center justify-end gap-2.5">
+          {/* Footer Actions */}
+          <div className="pt-3 border-t border-border-subtle flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 h-10 rounded-xl text-xs font-semibold hover:bg-surface-subtle text-ink cursor-pointer transition-colors"
+              className="px-4 h-9 rounded-xl text-xs font-semibold text-ink hover:bg-surface-subtle cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 h-10 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs transition-all disabled:opacity-50"
+              className="px-5 h-9 rounded-xl bg-lime hover:bg-lime-hover text-[#14161A] font-bold text-xs flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
             >
-              <Save size={14} className="text-[#14161A]" />
-              <span className="text-[#14161A]">{isSaving ? 'Saving...' : 'Save Profile & Settings'}</span>
+              <Save size={13} className="text-[#14161A]" />
+              <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
             </button>
           </div>
         </form>

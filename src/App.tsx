@@ -94,11 +94,19 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.toLowerCase();
-      if (hash.includes('leads')) setActiveTab('LEADS');
-      else if (hash.includes('pipeline')) setActiveTab('PIPELINE');
-      else if (hash.includes('follow-ups') || hash.includes('followups')) setActiveTab('FOLLOW-UPS');
-      else if (hash.includes('analytics')) setActiveTab('ANALYTICS');
-      else if (hash.includes('home') || hash === '' || hash === '#') setActiveTab('HOME');
+      if (hash.includes('settings')) {
+        setIsSettingsOpen(true);
+      } else if (hash.includes('leads')) {
+        setActiveTab('LEADS');
+      } else if (hash.includes('pipeline')) {
+        setActiveTab('PIPELINE');
+      } else if (hash.includes('follow-ups') || hash.includes('followups')) {
+        setActiveTab('FOLLOW-UPS');
+      } else if (hash.includes('analytics')) {
+        setActiveTab('ANALYTICS');
+      } else if (hash === '' || hash === '#' || hash.includes('home')) {
+        setActiveTab('HOME');
+      }
 
       // Check lead ID in hash: #lead/lead-01
       const leadMatch = window.location.hash.match(/#lead\/([a-zA-Z0-9-_]+)/);
@@ -126,6 +134,18 @@ export default function App() {
   const handleCloseLead = () => {
     setSelectedLead(null);
     window.location.hash = activeTab.toLowerCase();
+  };
+
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(true);
+    window.location.hash = 'settings';
+  };
+
+  const handleCloseSettings = () => {
+    setIsSettingsOpen(false);
+    if (window.location.hash.toLowerCase().includes('settings')) {
+      window.location.hash = activeTab.toLowerCase();
+    }
   };
 
   // Continuous multi-stage follow-up reminder check (2h, 1h, 10m, exact time, overdue)
@@ -434,7 +454,7 @@ export default function App() {
         userName={settings.userName}
         userRole={settings.userRole}
         onOpenQuickAdd={() => setIsQuickAddOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenSettings={handleOpenSettings}
         onOpenTemplates={() => setIsTemplatesOpen(true)}
         onOpenHelp={() => setIsHelpOpen(true)}
         onClearDemoData={handleClearDemoData}
@@ -518,7 +538,7 @@ export default function App() {
       {/* Settings Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={handleCloseSettings}
         settings={settings}
         onSaveSettings={async updates => {
           const s = await settingsApi.updateSettings(updates);
