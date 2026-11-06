@@ -25,8 +25,13 @@ import {
   Flame,
   Snowflake,
   Trophy,
+  Edit3,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Archive02Icon, Delete02Icon } from '@hugeicons/core-free-icons';
+import { SwipeRow } from '../common/SwipeRow';
+import { EditLeadModal } from './EditLeadModal';
 import { Lead, LeadSource, LeadStage, LeadTemperature, RailFilter } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
@@ -74,6 +79,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [sortField, setSortField] = useState<'nextFollowUp' | 'createdAt' | 'value'>('nextFollowUp');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [leadToEdit, setLeadToEdit] = useState<Lead | null>(null);
 
   // Real-time counts for all preset filters
   const presetCounts = useMemo(() => {
@@ -545,6 +551,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
 
                       <td className="py-2 px-4 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setLeadToEdit(lead)}
+                            className="w-7 h-7 rounded-lg hover:bg-border-subtle flex items-center justify-center text-ink-secondary hover:text-ink transition-colors cursor-pointer"
+                            title="Edit lead"
+                          >
+                            <Edit3 size={14} />
+                          </button>
+
                           <a
                             href={waUrl}
                             target="_blank"
@@ -585,64 +600,118 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           )}
         </div>
       ) : (
-        /* Card Grid View */
+        /* Card Grid View (with SwipeRow for mobile / quick gestures) */
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredLeads.map(lead => {
             const displayName = getLeadDisplayName(lead);
             const waUrl = buildWhatsAppUrl(lead.whatsappNumber);
             return (
-              <div
+              <SwipeRow
                 key={lead.id}
-                onClick={() => onOpenLead(lead)}
-                className="p-5 rounded-[20px] bg-surface border border-border-subtle/80 shadow-xs hover:shadow-md transition-shadow cursor-pointer flex flex-col justify-between space-y-4"
+                radius={20}
+                actionColor="#E5484D"
+                drawerColor="var(--color-surface-subtle, #27272a)"
+                rowColor="var(--color-surface, #ffffff)"
+                textColor="#ffffff"
+                actions={[
+                  {
+                    id: 'delete',
+                    label: 'Delete',
+                    icon: <HugeiconsIcon icon={Delete02Icon} size={20} />,
+                    color: '#E5484D',
+                  },
+                  {
+                    id: 'archive',
+                    label: 'Archive',
+                    icon: <HugeiconsIcon icon={Archive02Icon} size={20} />,
+                    color: '#52525b',
+                    dismiss: true,
+                    onSelect: () => {
+                      onUpdateLead(lead.id, { archived: true });
+                      toast.success(`Lead ${displayName} archived`);
+                    },
+                  },
+                ]}
+                onCommit={action => {
+                  if (action.id === 'delete') {
+                    onDeleteLead(lead.id);
+                    toast.success(`Lead ${displayName} deleted`);
+                  }
+                }}
+                className="shadow-xs hover:shadow-md transition-shadow border border-border-subtle/80"
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      name={lead.fullName}
-                      phone={lead.whatsappNumber}
-                      avatarColor={lead.avatarColor}
-                      size={40}
-                    />
-                    <div>
-                      <h3 className="font-bold text-ink text-sm">{displayName}</h3>
-                      <p className="text-[11px] text-ink-muted font-mono">{lead.whatsappNumber}</p>
+                <div
+                  onClick={() => onOpenLead(lead)}
+                  className="p-5 w-full h-full cursor-pointer flex flex-col justify-between space-y-4"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        name={lead.fullName}
+                        phone={lead.whatsappNumber}
+                        avatarColor={lead.avatarColor}
+                        size={40}
+                      />
+                      <div>
+                        <h3 className="font-bold text-ink text-sm">{displayName}</h3>
+                        <p className="text-[11px] text-ink-muted font-mono">{lead.whatsappNumber}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setLeadToEdit(lead)}
+                        className="w-7 h-7 rounded-lg hover:bg-border-subtle flex items-center justify-center text-ink-secondary hover:text-ink transition-colors cursor-pointer"
+                        title="Edit lead"
+                      >
+                        <Edit3 size={13} />
+                      </button>
+                      <SourceBadge source={lead.source} />
                     </div>
                   </div>
-                  <SourceBadge source={lead.source} />
-                </div>
 
-                <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between text-ink-secondary">
-                    <span>Purpose:</span>
-                    <span className="font-semibold text-ink">{lead.purpose}</span>
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center justify-between text-ink-secondary">
+                      <span>Purpose:</span>
+                      <span className="font-semibold text-ink">{lead.purpose}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-ink-secondary">
+                      <span>Follow-up:</span>
+                      <span className="font-semibold text-ink">
+                        {formatFollowUpDateDisplay(lead.nextFollowUpAt)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between text-ink-secondary">
-                    <span>Follow-up:</span>
-                    <span className="font-semibold text-ink">
-                      {formatFollowUpDateDisplay(lead.nextFollowUpAt)}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="pt-2 border-t border-border-subtle/60 flex items-center justify-between">
-                  <StageBadge stage={lead.stage} />
-                  <a
-                    href={waUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="h-8 px-3 rounded-lg bg-button-dark text-white text-xs font-semibold flex items-center gap-1.5"
-                  >
-                    <FaWhatsapp size={13} className="text-[#25D366]" />
-                    <span>WhatsApp</span>
-                  </a>
+                  <div className="pt-2 border-t border-border-subtle/60 flex items-center justify-between">
+                    <StageBadge stage={lead.stage} />
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="h-8 px-3 rounded-lg bg-button-dark text-white text-xs font-semibold flex items-center gap-1.5 hover:bg-black transition-colors"
+                    >
+                      <FaWhatsapp size={14} className="text-[#25D366]" />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
                 </div>
-              </div>
+              </SwipeRow>
             );
           })}
         </div>
       )}
+
+      {/* Edit Lead Modal */}
+      <EditLeadModal
+        isOpen={!!leadToEdit}
+        lead={leadToEdit}
+        onClose={() => setLeadToEdit(null)}
+        onSave={async (leadId, updates) => {
+          await onUpdateLead(leadId, updates);
+        }}
+      />
     </div>
   );
 };

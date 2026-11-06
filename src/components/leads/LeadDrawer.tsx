@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   X,
+  ArrowLeft,
   Phone,
   Mail,
   Copy,
@@ -24,12 +25,15 @@ import {
   CheckCircle2,
   Volume2,
   VolumeX,
+  Edit3,
+  FileText,
 } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa6';
 import { Lead, LeadTemplate, LeadStage, LeadTemperature, InteractionType } from '../../types';
 import { Avatar } from '../common/Avatar';
 import { StageBadge, SourceBadge, TemperatureBadge } from '../common/Badge';
 import { CustomSelect } from '../common/Select';
+import { EditLeadModal } from './EditLeadModal';
 import { useTextToSpeech, useVoiceRecognition } from '../../utils/speech';
 import {
   getLeadDisplayName,
@@ -88,6 +92,7 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
   const [showWonModal, setShowWonModal] = useState(false);
   const [wonValueInput, setWonValueInput] = useState('');
   const [showLostModal, setShowLostModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const { isSpeaking, speak, stop } = useTextToSpeech();
 
   const {
@@ -103,6 +108,17 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
     },
     onError: msg => toast.error(msg),
   });
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showEditModal && !showWonModal && !showLostModal) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, showEditModal, showWonModal, showLostModal]);
 
   if (!lead) return null;
 
@@ -250,27 +266,66 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
         className="relative z-50 w-full max-w-[560px] bg-surface text-ink h-full shadow-2xl flex flex-col border-l border-border-subtle"
       >
         {/* Header */}
-        <div className="p-6 border-b border-border-subtle flex items-start justify-between">
-          <div className="flex items-center gap-3.5">
+        <div className="p-4 sm:p-6 border-b border-border-subtle bg-surface space-y-3">
+          {/* Top Bar with dedicated Back and Close buttons */}
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+              title="Close sidebar (Esc)"
+              aria-label="Back to leads list"
+            >
+              <ArrowLeft size={15} />
+              <span>Back</span>
+            </button>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(true)}
+                className="h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="Edit Lead Details"
+              >
+                <Edit3 size={13} className="text-ink-secondary" />
+                <span>Edit</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle flex items-center justify-center text-ink-secondary hover:text-ink cursor-pointer transition-colors"
+                title="Close (Esc)"
+                aria-label="Close sidebar"
+              >
+                <X size={17} />
+              </button>
+            </div>
+          </div>
+
+          {/* Lead Avatar, Name & Switchers */}
+          <div className="flex items-center gap-3 min-w-0">
             <Avatar
               name={lead.fullName}
               phone={lead.whatsappNumber}
               avatarColor={lead.avatarColor}
-              size={48}
+              size={44}
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-ink tracking-tight">{displayName}</h2>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base sm:text-xl font-bold text-ink tracking-tight truncate">
+                  {displayName}
+                </h2>
                 <SourceBadge source={lead.source} />
               </div>
 
               {/* Stage & Temperature Switchers */}
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 <CustomSelect
                   size="sm"
                   value={lead.stage}
                   onChange={val => onUpdateLead(lead.id, { stage: val as LeadStage })}
-                  className="w-36"
+                  className="w-32 sm:w-36"
                   options={STAGES.map(s => ({ value: s, label: s }))}
                 />
 
@@ -297,68 +352,63 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
               </div>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-surface-subtle flex items-center justify-center text-ink-secondary hover:text-ink cursor-pointer"
-          >
-            <X size={18} />
-          </button>
         </div>
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Quick Action Bar (1-Click rule) */}
-          <div className="grid grid-cols-4 gap-2">
+          {/* Quick Action Bar (Responsive: prominent, well-proportioned WhatsApp button on mobile) */}
+          <div className="flex flex-col sm:grid sm:grid-cols-4 gap-2">
             <a
               href={waUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="h-10 rounded-xl bg-button-dark hover:bg-black text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-colors"
+              className="h-11 sm:h-10 rounded-xl bg-[#25D366] hover:bg-[#20ba5a] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] shrink-0"
+              title="Open chat on WhatsApp"
             >
-              <FaWhatsapp size={15} className="text-[#25D366]" />
-              <span>WhatsApp</span>
+              <FaWhatsapp size={18} className="text-white shrink-0" />
+              <span className="font-semibold tracking-wide">WhatsApp</span>
             </a>
 
-            {lead.email ? (
-              <a
-                href={emailUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <Mail size={14} />
-                <span>Email</span>
-              </a>
-            ) : (
+            <div className="grid grid-cols-3 sm:contents gap-2">
+              {lead.email ? (
+                <a
+                  href={emailUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Mail size={14} className="shrink-0" />
+                  <span className="truncate">Email</span>
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="h-10 rounded-xl bg-surface-subtle opacity-40 text-ink-disabled text-xs font-semibold flex items-center justify-center gap-1.5"
+                >
+                  <Mail size={14} className="shrink-0" />
+                  <span className="truncate">Email</span>
+                </button>
+              )}
+
               <button
                 type="button"
-                disabled
-                className="h-10 rounded-xl bg-surface-subtle opacity-40 text-ink-disabled text-xs font-semibold flex items-center justify-center gap-1.5"
+                onClick={handleCopyPhone}
+                className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Mail size={14} />
-                <span>Email</span>
+                <Copy size={14} className="shrink-0" />
+                <span className="truncate">Copy #</span>
               </button>
-            )}
 
-            <button
-              type="button"
-              onClick={handleCopyPhone}
-              className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Copy size={14} />
-              <span>Copy #</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadIcs}
-              className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Calendar size={14} />
-              <span>Cal (.ics)</span>
-            </button>
+              <button
+                type="button"
+                onClick={handleDownloadIcs}
+                className="h-10 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Calendar size={14} className="shrink-0" />
+                <span className="truncate">Cal (.ics)</span>
+              </button>
+            </div>
           </div>
 
           {/* WhatsApp Template Picker & Live Preview */}
@@ -442,7 +492,17 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
 
           {/* Lead Details Accordion / Summary */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Lead Details</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Lead Details</h3>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(true)}
+                className="text-xs font-semibold text-ink-secondary hover:text-ink flex items-center gap-1 cursor-pointer transition-colors"
+              >
+                <Edit3 size={12} />
+                <span>Edit details</span>
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-surface-subtle">
                 <span className="text-ink-muted block text-[11px]">Purpose / Scope</span>
@@ -502,43 +562,50 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
             )}
           </div>
 
-          {/* Log Interaction Composer */}
+          {/* Log Interaction Composer (Non-overflowing responsive layout) */}
           <form onSubmit={handleLogInteractionSubmit} className="space-y-3 pt-3 border-t border-border-subtle">
+            {/* Header: Title + Voice Dictate button */}
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">Log Interaction</h3>
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-1">
-                  {(['WhatsApp', 'Email', 'Call', 'Meeting', 'Note'] as InteractionType[]).map(type => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setInteractionType(type)}
-                      className={`px-2 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
-                        interactionType === type
-                          ? 'bg-ink text-white dark:bg-white dark:text-[#14161A] font-bold'
-                          : 'bg-surface-subtle text-ink-secondary hover:text-ink'
-                      }`}
-                    >
-                      {type}
-                    </button>
-                  ))}
-                </div>
+              <button
+                type="button"
+                onClick={() => toggleInteractionListening()}
+                title={isInteractionListening ? 'Stop voice typing (Listening)' : 'Start voice typing (Dictation)'}
+                className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isInteractionListening
+                    ? 'bg-semantic-overdue text-white animate-pulse shadow-xs'
+                    : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary hover:text-ink border border-border-subtle'
+                }`}
+              >
+                <Mic size={13} className={isInteractionListening ? 'animate-bounce' : ''} />
+                <span>{isInteractionListening ? 'Listening...' : 'Voice Dictate'}</span>
+              </button>
+            </div>
 
-                {/* Voice Typing Button */}
+            {/* Interaction Types: 5-column responsive segmented bar */}
+            <div className="grid grid-cols-5 gap-1 p-1 bg-surface-subtle rounded-xl border border-border-subtle">
+              {[
+                { type: 'WhatsApp' as InteractionType, label: 'WhatsApp', icon: <FaWhatsapp size={13} className="text-[#25D366] shrink-0" /> },
+                { type: 'Email' as InteractionType, label: 'Email', icon: <Mail size={13} className="shrink-0" /> },
+                { type: 'Call' as InteractionType, label: 'Call', icon: <Phone size={13} className="shrink-0" /> },
+                { type: 'Meeting' as InteractionType, label: 'Meeting', icon: <Calendar size={13} className="shrink-0" /> },
+                { type: 'Note' as InteractionType, label: 'Note', icon: <FileText size={13} className="shrink-0" /> },
+              ].map(item => (
                 <button
+                  key={item.type}
                   type="button"
-                  onClick={() => toggleInteractionListening()}
-                  title={isInteractionListening ? 'Stop voice typing (Listening)' : 'Start voice typing (Dictation)'}
-                  className={`h-6 px-2 rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
-                    isInteractionListening
-                      ? 'bg-semantic-overdue text-white animate-pulse shadow-xs'
-                      : 'bg-surface-subtle hover:bg-border-subtle text-ink-secondary hover:text-ink'
+                  onClick={() => setInteractionType(item.type)}
+                  className={`h-8 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                    interactionType === item.type
+                      ? 'bg-surface text-ink font-bold shadow-xs border border-border-subtle'
+                      : 'text-ink-secondary hover:text-ink'
                   }`}
+                  title={item.label}
                 >
-                  <Mic size={12} className={isInteractionListening ? 'animate-bounce' : ''} />
-                  <span>{isInteractionListening ? 'Listening...' : 'Voice'}</span>
+                  {item.icon}
+                  <span className="hidden sm:inline truncate">{item.label}</span>
                 </button>
-              </div>
+              ))}
             </div>
 
             <div className="relative">
@@ -650,6 +717,15 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
           <div className="flex items-center gap-1.5">
             <button
               type="button"
+              onClick={onClose}
+              className="h-9 px-3 rounded-xl bg-surface-subtle hover:bg-border-subtle border border-border-subtle text-ink text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+              aria-label="Close sidebar"
+            >
+              <span>Close</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => {
                 onDeleteLead(lead.id);
                 onClose();
@@ -748,6 +824,16 @@ export const LeadDrawer: React.FC<LeadDrawerProps> = ({
           </motion.div>
         </div>
       )}
+
+      {/* Edit Lead Modal */}
+      <EditLeadModal
+        isOpen={showEditModal}
+        lead={lead}
+        onClose={() => setShowEditModal(false)}
+        onSave={async (leadId, updates) => {
+          await onUpdateLead(leadId, updates);
+        }}
+      />
     </div>
   );
 };

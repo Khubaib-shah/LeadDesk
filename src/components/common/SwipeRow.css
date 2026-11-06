@@ -1,0 +1,60 @@
+.swipe-row-root {
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  touch-action: pan-y;
+  box-sizing: border-box;
+}
+
+.swipe-row-drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  z-index: 1;
+}
+
+.swipe-row-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.swipe-row-action:hover {
+  opacity: 0.9;
+}
+
+.swipe-row-action:active {
+  transform: scale(0.96);
+}
+
+.swipe-row-commit-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.swipe-row-surface {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.swipe-row-surface:active {
+  cursor: grabbing;
+}
